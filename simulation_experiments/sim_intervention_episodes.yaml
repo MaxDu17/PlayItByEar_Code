@@ -1,0 +1,149 @@
+# env
+env: drq-robosuite
+action_repeat: 1 #not used for now 
+# train
+seed: ??
+# eval
+num_eval_episodes: 20
+# misc
+log_frequency_step: 10000
+log_save_tb: true
+save_video: true
+device: cuda
+# observation
+image_size: 84
+image_pad: 4
+horizon: 500 
+# global params
+lr: 1e-3
+# IMPORTANT: please use a batch size of 512 to reproduce the results in the paper. Hovewer, with a smaller batch size it still works well.
+batch_size: 8 #half because we do balanced batches 
+
+#things that we can't change without breaking something  
+frame_stack: 3
+lowdim_stack: 10
+system: sim #sim for the mujoco stuff, and "real" for franka
+use_squashed: True
+sparseProp: 0.75
+
+####### CHANGES HERE ########
+#core parameters to change 
+stack: 10 
+num_corrections: 100 #number of corrections
+episodeLength: 400 #400 for pick-place, 250 for grabbing 
+
+number_demos: 50 #demos in the original
+checkpoint: 100000
+orig_seed: ${seed}
+
+demo_file_working: demos.pkl 
+priority: true #see what happens 
+
+updates_per_episode: 1000 #used to be 2500
+num_workers: 4 #CHANGE BACK LATER
+warmup: 5 #how many episodes before first train 
+
+#environment info 
+environmentName: BlockedPickPlace #IMPORTANT: this is the environment that is run 
+modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel]
+cameraName: agentview_image
+
+#logging 
+actor_root: /iris/u/maxjdu/communal_results/
+demo_root: /iris/u/maxjdu/communal_demos/
+load_folder: ${environmentName}_${number_demos}_${orig_seed}
+load_dir: ${load_folder}/${checkpoint}_
+demo_file: ${environmentName}_${number_demos}/demos.pkl
+
+runName: ${load_folder}
+rollouts_per_eval: 2 
+
+##### END CHANGES HERE ##########
+
+#different names currently registered
+#"BlockedPickPlace"
+#"IndicatorBoxBlock"
+
+
+#modalities to choose from
+# robot0_joint_pos_cos  :  (7,)
+# robot0_joint_pos_sin  :  (7,)
+# robot0_joint_vel  :  (7,)
+# robot0_eef_pos  :  (3,)
+# robot0_eef_quat  :  (4,)
+# robot0_gripper_qpos  :  (2,) #two values roughly identical but inverted. Larger number (0.038) indicates open, smaller number (~0) indicates closed
+# robot0_gripper_qvel  :  (2,)
+# agentview_image  :  (84, 84, 3)
+# cube_pos  :  (3,)
+# cube_quat  :  (4,)
+# gripper_to_cube_pos  :  (3,)
+# gripper_force  :  (3,)
+# gripper_torque  :  (3,)
+# object_sound  :  (2,)
+# robot0_proprio-state  :  (32,) CONCATENATED from cos, sin, vel, pos, quat, qpos, qvel
+# image-state  :  (84, 84, 3) DON'T USE THIS, use agentview_image instead
+# object-state  :  (18,)
+
+#sidenote: gripper is negative in the action, gripper closed is positive in the action 
+
+
+# agent configuration
+agent:
+  name: drq
+  class: core.drq_memory.DRQAgent
+  params:
+    obs_shape: ??? # to be specified later
+    action_shape: ??? # to be specified later
+    action_range: ??? # to be specified later
+    lowdim_dim: ??? #to b e specified later
+    device: ${device}
+    encoder_cfg: ${encoder}
+    critic_cfg: ${critic}
+    actor_cfg: ${actor}
+    discount: 0.99
+    init_temperature: 0.1
+    lr: ${lr}
+    actor_update_frequency: 2
+    critic_tau: 0.01
+    critic_target_update_frequency: 2
+    batch_size: ${batch_size}
+    log_frequency: 5
+
+critic:
+  class: core.drq_memory.Critic
+  params:
+    encoder_cfg: ${agent.params.encoder_cfg}
+    action_shape: ${agent.params.action_shape}
+    hidden_dim: 1024
+    hidden_depth: 2
+
+actor:
+  class: core.drq_memory.Actor
+  params:
+    encoder_cfg: ${agent.params.encoder_cfg}
+    action_shape: ${agent.params.action_shape}
+    hidden_depth: 2
+    hidden_dim: 1024
+    log_std_bounds: [-6, -1]
+
+encoder:
+  class: core.drq_memory.Encoder
+  params:
+      obs_shape: ${agent.params.obs_shape}
+      feature_dim: 50
+      lowdim_dim: ${agent.params.lowdim_dim}
+      num_layers: 4
+      num_filters: 32
+      output_dim: 35
+      output_logits: False
+      
+
+#name of the folder directory 
+
+log_dir: /iris/u/maxjdu/communal_results/${runName}
+# hydra configuration
+hydra:
+  name: ${env}
+  run:
+    dir: /iris/u/maxjdu/communal_results/${runName}
+#     dir: ./runs/BC/${runName}_${hydra.job.override_dirname}_

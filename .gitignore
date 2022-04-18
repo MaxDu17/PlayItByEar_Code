@@ -1,0 +1,15 @@
+events.out.*
+*.gif
+unused/
+unused_runs/
+*.log
+*.pkl
+*.out
+runs/
+real_runs/
+paper_runs/
+runs_archive/
+demos/
+__pycache__/
+.ipynb_checkpoints/
+clusterlogs/

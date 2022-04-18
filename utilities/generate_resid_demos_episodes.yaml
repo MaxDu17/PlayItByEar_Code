@@ -1,0 +1,183 @@
+# env
+env: drq-robosuite
+action_repeat: 1 #not used for now 
+# train
+num_train_steps: 5000000
+num_train_iters: 1
+num_seed_steps: 1000
+replay_buffer_capacity: 37500
+seed: ??
+# eval
+eval_frequency: 10000
+num_eval_episodes: 5
+# misc
+log_frequency_step: 500
+log_save_tb: true
+save_video: true
+device: cuda
+# observation
+image_size: 84
+image_pad: 4
+horizon: 500
+system: sim #not used 
+
+# global params
+lr: 1e-3
+batch_size: 16
+
+#things you should not change
+frame_stack: 3
+lowdim_stack: 10
+
+###### BEGIN CHANGES HERE####### 
+#core adjustments 
+environmentName: BlockedPickPlace #IMPORTANT: this is the environment that is run 
+stack: 10 
+step: 100000
+orig_seed: ${seed}
+
+actor_root: /iris/u/maxjdu/communal_results/
+demo_root: /iris/u/maxjdu/communal_demos/
+actor_name: ${environmentName}_${num_demos}_${orig_seed}/${step}_ 
+demo_file: ${environmentName}_${num_demos}/demos.pkl
+num_demos: 50
+
+#modality and environment
+modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel]
+cameraName: agentview_image
+
+#name of the folder directory 
+runName: ${environmentName}_${num_demos}_${orig_seed}
+
+#####RUN END CHANGES HERE ##########
+
+
+#modalities to choose from
+# robot0_joint_pos_cos  :  (7,)
+# robot0_joint_pos_sin  :  (7,)
+# robot0_joint_vel  :  (7,)
+# robot0_eef_pos  :  (3,)
+# robot0_eef_quat  :  (4,)
+# robot0_gripper_qpos  :  (2,) #two values roughly identical but inverted. Larger number (0.038) indicates open, smaller number (~0) indicates closed
+# robot0_gripper_qvel  :  (2,)
+# agentview_image  :  (84, 84, 3)
+# cube_pos  :  (3,)
+# cube_quat  :  (4,)
+# gripper_to_cube_pos  :  (3,)
+# gripper_force  :  (3,)
+# gripper_torque  :  (3,)
+# object_sound  :  (2,) #the processed XY speed that an object moves (roughly is like sound)
+# robot0_proprio-state  :  (32,) CONCATENATED from cos, sin, vel, pos, quat, qpos, qvel
+# image-state  :  (84, 84, 3) DON'T USE THIS, use agentview_image instead
+# object-state  :  (18,)
+# robot0_gripper_act_force (2,) #don't use this 
+# robot0_gripper_joint_force (2,) #finger force (not wrist force; use this one)
+
+#sidenote: gripper is negative in the action, gripper closed is positive in the action 
+
+# agent configuration
+agent:
+  name: drq
+  class: core.drq_memory.DRQAgent
+  params:
+    obs_shape: ??? # to be specified later
+    action_shape: ??? # to be specified later
+    action_range: ??? # to be specified later
+    lowdim_dim: ??? #to b e specified later
+    device: ${device}
+    encoder_cfg: ${encoder}
+    critic_cfg: ${critic}
+    actor_cfg: ${actor}
+    discount: 0.99
+    init_temperature: 0.1
+    lr: ${lr}
+    actor_update_frequency: 2
+    critic_tau: 0.01
+    critic_target_update_frequency: 2
+    batch_size: ${batch_size}
+    log_frequency: 20
+    
+resid_agent:
+  name: drq
+  class: core.drq_memory.DRQAgent
+  params:
+    obs_shape: ${agent.params.obs_shape} 
+    action_shape: ${agent.params.action_shape}
+    action_range: ${agent.params.action_range}
+    lowdim_dim: ??? #to be combined later
+    device: ${device}
+    encoder_cfg: ${resid_encoder}
+    critic_cfg: ${resid_critic}
+    actor_cfg: ${resid_actor}
+    discount: 0.99
+    init_temperature: 0.1
+    lr: ${lr}
+    actor_update_frequency: 2
+    critic_tau: 0.01
+    critic_target_update_frequency: 2
+    batch_size: ${batch_size}
+    log_frequency: 20
+
+critic:
+  class: core.drq_memory.Critic
+  params:
+    encoder_cfg: ${agent.params.encoder_cfg}
+    action_shape: ${agent.params.action_shape}
+    hidden_dim: 1024
+    hidden_depth: 2
+    
+actor:
+  class: core.drq_memory.Actor
+  params:
+    encoder_cfg: ${agent.params.encoder_cfg}
+    action_shape: ${agent.params.action_shape}
+    hidden_depth: 2
+    hidden_dim: 1024
+    log_std_bounds: [-10, 2]
+
+resid_critic:
+  class: core.drq_memory.Critic
+  params:
+    encoder_cfg: ${resid_agent.params.encoder_cfg}
+    action_shape: ${agent.params.action_shape}
+    hidden_dim: 1024
+    hidden_depth: 2
+
+resid_actor:
+  class: core.drq_memory.Actor
+  params:
+    encoder_cfg: ${resid_agent.params.encoder_cfg}
+    action_shape: ${agent.params.action_shape}
+    hidden_depth: 2
+    hidden_dim: 1024
+    log_std_bounds: [-10, 2]
+
+encoder:
+  class: core.drq_memory.Encoder
+  params:
+      obs_shape: ${agent.params.obs_shape}
+      feature_dim: 50
+      lowdim_dim: ${agent.params.lowdim_dim}
+      num_layers: 4
+      num_filters: 32
+      output_dim: 35
+      output_logits: False
+
+resid_encoder:
+  class: core.drq_memory.Encoder
+  params:
+      obs_shape: ${resid_agent.params.obs_shape}
+      feature_dim: 50
+      lowdim_dim: ${resid_agent.params.lowdim_dim}
+      num_layers: 4
+      num_filters: 32
+      output_dim: 35
+      output_logits: False
+
+# get_out: ../../ #to get out of the original logging directory 
+log_dir: /iris/u/maxjdu/communal_results/${runName}/resid/
+# hydra configuration
+hydra:
+  name: ${env}
+  run:
+    dir: ${log_dir}
