@@ -1,6 +1,6 @@
 # env
 env: drq-robosuite
-action_repeat: 1 #not used for now 
+action_repeat: 1 #not used for now
 # train
 seed: ??
 # eval
@@ -13,13 +13,12 @@ device: cuda
 # observation
 image_size: 84
 image_pad: 4
-horizon: 500 
+horizon: 500
 # global params
 lr: 1e-3
-# IMPORTANT: please use a batch size of 512 to reproduce the results in the paper. Hovewer, with a smaller batch size it still works well.
-batch_size: 8 #half because we do balanced batches 
+batch_size: 8 #half because we do balanced batches
 
-#things that we can't change without breaking something  
+#things that we can't change without breaking something
 frame_stack: 3
 lowdim_stack: 10
 system: sim #sim for the mujoco stuff, and "real" for franka
@@ -27,28 +26,28 @@ use_squashed: True
 sparseProp: 0.75
 
 ####### CHANGES HERE ########
-#core parameters to change 
-stack: 10 
+#core parameters to change
+stack: 10
 num_corrections: 100 #number of corrections
-episodeLength: 400 #400 for pick-place, 250 for grabbing 
+episodeLength: 400 #400 for pick-place, 250 for grabbing
 
 number_demos: 50 #demos in the original
 checkpoint: 100000
 orig_seed: ${seed}
 
-demo_file_working: demos.pkl 
-priority: true #see what happens 
+demo_file_working: demos.pkl
+priority: true #see what happens
 
 updates_per_episode: 1000 #used to be 2500
 num_workers: 4 #CHANGE BACK LATER
-warmup: 5 #how many episodes before first train 
+warmup: 5 #how many episodes before first train
 
-#environment info 
-environmentName: BlockedPickPlace #IMPORTANT: this is the environment that is run 
+#environment info
+environmentName: BlockedPickPlace #IMPORTANT: this is the environment that is run
 modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel]
 cameraName: agentview_image
 
-#logging 
+#logging
 actor_root: /iris/u/maxjdu/communal_results/
 demo_root: /iris/u/maxjdu/communal_demos/
 load_folder: ${environmentName}_${number_demos}_${orig_seed}
@@ -56,7 +55,7 @@ load_dir: ${load_folder}/${checkpoint}_
 demo_file: ${environmentName}_${number_demos}/demos.pkl
 
 runName: ${load_folder}
-rollouts_per_eval: 2 
+rollouts_per_eval: 2
 
 ##### END CHANGES HERE ##########
 
@@ -84,7 +83,7 @@ rollouts_per_eval: 2
 # image-state  :  (84, 84, 3) DON'T USE THIS, use agentview_image instead
 # object-state  :  (18,)
 
-#sidenote: gripper is negative in the action, gripper closed is positive in the action 
+#sidenote: gripper is negative in the action, gripper closed is positive in the action
 
 
 # agent configuration
@@ -136,9 +135,9 @@ encoder:
       num_filters: 32
       output_dim: 35
       output_logits: False
-      
 
-#name of the folder directory 
+
+#name of the folder directory
 
 log_dir: /iris/u/maxjdu/communal_results/${runName}
 # hydra configuration
@@ -146,4 +145,3 @@ hydra:
   name: ${env}
   run:
     dir: /iris/u/maxjdu/communal_results/${runName}
-#     dir: ./runs/BC/${runName}_${hydra.job.override_dirname}_

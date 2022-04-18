@@ -16,7 +16,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import core.utils as utils
 from core.logger import Logger
-# from core.replay_buffer_audio import ReplayBufferDoubleRewardAudio as ReplayBuffer
+
 from core.replay_buffer_audio_episode import ReplayBufferAudioEpisodes as ReplayBufferEpisode
 from core.video import VideoRecorder
 import gym
@@ -53,7 +53,6 @@ class Workspace(object):
         print(f'workspace: {self.work_dir}')
         print("cuda status: ", torch.cuda.is_available())
         self.cfg = cfg
-#         copyfile("../../oculus_demo.yaml", "hyperparameters.yaml") #makes sure we keep track of hyperparameters
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
         self.env = make_env(cfg)
@@ -94,7 +93,7 @@ class Workspace(object):
 
         assert cfg.replay_buffer_capacity % cfg.episodeLength == 0
 
-        if cfg.first_time:
+        if cfg.first_time: #robust to crashes in an experiment
             self.new_replay_buffer_obj = ReplayBufferEpisode([1, cfg.raw_lowdim * cfg.lowdim_stack],
                                   self.env.observation_space.shape[1:],
                                   cfg.audio_shape,
@@ -111,7 +110,6 @@ class Workspace(object):
             #dataloader object can be made into a generator, but we update the original _obj object, which
             #implicily updates the dataloader. The generator is only updated when we explicitly regenerate
         else:
-#             copyfile(f"{cfg.results_root}{cfg.runName}/eval.csv", f"{cfg.results_root}{cfg.runName}/eval_backup{time.time()}.csv")
             print("loading!!")
             self.new_replay_buffer_obj = pkl.load(open(cfg.results_root + cfg.demo_file_working, "rb")) #load previous collection attempt (allows you to collect in multiple sessions)
             self.new_replay_buffer_obj.set_sample_settings(trainprop = 1, train = True, length = 10, correctionsOnly = True)
@@ -173,12 +171,12 @@ class Workspace(object):
             mod_delta = self.transform_basis(delta)
             mod_delta = self.momentum(mod_delta, prev_delta, gamma)
 
-#             mod_delta[0:2] *= 0.5
-            mod_delta[2] *= 2
+            mod_delta[2] *= 2 #vertical motion is hardest to do on oculus, so we enhance
 
             mod_delta = [component if -CAP <= component <= CAP else -CAP if component < -CAP else CAP for component in mod_delta] #prevent sudden movements
             action = np.append(mod_delta, gripperStatus) #concatenate with gripper command
 
+            # we can intervene with pure gripper if needed
             if trigger == 0: #allow the robot to take over
                 action = self.agent.act(lowdim, obs, audio, sample=False, squash = True)
                 action[3] = action[3] if gripperStatus != 1 else gripperStatus
@@ -190,7 +188,6 @@ class Workspace(object):
             print("\t", self.step) #the step variable increments until the end of episode
             next_lowdim, next_obs, next_audio, reward, done, info = self.env.step(action)
 
-            # allow infinite bootstrap
             done = float(done)
             done_no_max = 0 if episode_step + 1 == self.env._max_episode_steps else done
             episode_reward += reward
@@ -205,7 +202,6 @@ class Workspace(object):
             episode_step += 1
             self.step += 1
 
-#             print(f"time between step: {time.time() - beg_time}")
         print("saving images")
         for rendered_image, audio in zip(img_list, spec_list):
             #picture-in-picture construction
@@ -244,7 +240,6 @@ class Workspace(object):
 
             lowdim, obs, audio = self.env.reset()
             self.video_recorder.new_recorder_init(f'eval_{intervention_step}_{episode}.gif', enabled=(episode == 0 or episodes is not None))
-#             self.spec_recorder.new_recorder_init(f'{self.step}_{episode}.spectrogram.gif', enabled= True)
             done = False
             episode_step = 0
             while not done:
@@ -253,10 +248,8 @@ class Workspace(object):
                 beg_time = time.time()
                 with utils.eval_mode(self.agent):
                     action = self.agent.act(lowdim, obs, audio, sample=False, squash = self.cfg.use_squashed)
-#                 print(audio)
-                print(action)
-                print(np.linalg.norm(action))
                 lowdim, obs, audio, reward, done, info = self.env.step(action)
+                print(action)
                 sys.stdout.write("..")
                 sys.stdout.flush()
                 spec_list.append(audio)
@@ -287,7 +280,6 @@ class Workspace(object):
 
             print("Evaluate episode {0} done".format(episode))
             self.video_recorder.clean_up()
-#             self.spec_recorder.clean_up()
 
         prop_success /= episodes
         self.logger.log('eval/prop_success', prop_success, self.step)
@@ -296,9 +288,7 @@ class Workspace(object):
     def run(self, cfg):
         try:
             counter = 0
-#             successes = 0
             assert not self.new_replay_buffer_obj.full, "your buffer is already full!"
-#             numMoreSuccesses = int(self.new_replay_buffer_obj.numEpisodes - self.new_replay_buffer_obj.idx)
             numCurrSuccesses = int(self.new_replay_buffer_obj.idx)
             while numCurrSuccesses < int(self.new_replay_buffer_obj.numEpisodes):
                 if self.new_replay_buffer_obj.idx > 3 and self.new_replay_buffer_obj.idx % 1 == 0:
@@ -329,24 +319,15 @@ class Workspace(object):
                 counter += 1
                 self.step = 0
 
-
                 print("\t", numCurrSuccesses, " successes")
 
                 time.sleep(2)
-#                 if successes % 20 == 0 and self.new_replay_buffer_obj.idx > 2:
-#                     answer = input("do you want to dump now? (y/n)")
-#                     if answer == 'y':
-#                         print("dumping!")
-#                         pkl.dump(self.new_replay_buffer_obj, open( "demos" + str(successes) + ".pkl", "wb" ), protocol=4 )
-# #                     self.evaluate()
-#     #                     self.agent.save(numCurrSuccesses)
 
             pkl.dump(self.new_replay_buffer_obj, open( "demos_finished.pkl", "wb" ), protocol=4 )
         finally:
             print("running end routine")
             pkl.dump(self.new_replay_buffer_obj, open( "demos_backup.pkl", "wb" ), protocol=4 )
             self.agent.save(self.new_replay_buffer_obj.idx, work_dir = self.work_dir)
-
 
 
 @hydra.main(config_path='intervention_episodes.yaml', strict=True)

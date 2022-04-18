@@ -1,3 +1,5 @@
+# scripted intervention implementation
+
 import librosa
 import platform
 print(platform.node())
@@ -88,9 +90,6 @@ class Workspace(object):
         print(f'workspace: {self.work_dir}')
         print("cuda status: ", torch.cuda.is_available())
         self.cfg = cfg
-#         copyfile("../../../sim_intervention_episodes.yaml", "hyperparameters.yaml") #makes sure we keep track of hyperparameters
-#         copyfile("../../../sim_intervention_episodes.py", "hyperparameters.py") #makes sure we keep track of hyperparameters
-
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
         self.env = make_env(cfg)
@@ -120,7 +119,6 @@ class Workspace(object):
                              num_workers=cfg.num_workers,
                              worker_init_fn=worker_init_fn)
         self.old_replay_buffer = iter(self.old_replay_buffer_dataloader)
-#         assert cfg.replay_buffer_capacity % cfg.episodeLength == 0
 
 
         self.new_replay_buffer = ReplayBufferEpisode(self.old_replay_buffer_obj.lowdim_shape, self.old_replay_buffer_obj.obs_shape,
@@ -151,8 +149,11 @@ class Workspace(object):
 
 
     def single_demo_indicator_boxblock(self, iteration, cfg):
+        #essentially, we have an oracle policy and we switch to the oracle if certain checkpoints are not met
+        #control is given back to the agent after the oracle gets past the tricky task
+
         episode, episode_reward, episode_step, done = 0, 0, 1, True
-        CAP = 0.15 #CHANGE THIS
+        CAP = 0.15
         done = False
         episode_step = 0
         episode += 1
@@ -173,10 +174,7 @@ class Workspace(object):
         status_dict = {0 : "sidereach", 1 : "sidestep", 2 : "asdfasdad", 3: "moveup", 4 : "positioning",
                       5 : "blockreach", 6 : "grabbing", 7 : "lifting", 8 : "HALT"}
         reward = 0 #init reward
-        initial_cube = raw_dict["cube_pos"] #setting the search target
-
         hasContacted = False
-        hasMoved = False #these are related, but moved uses the "sound"
         intervention = False
         intervention_prop = 0
         intervention_list = list()
@@ -196,19 +194,14 @@ class Workspace(object):
             cube_pos = raw_dict["cube_pos"]
             claw_pos = raw_dict["robot0_eef_pos"]
             gripper_pos = raw_dict["robot0_gripper_qpos"]
-            sound = raw_dict["object_sound"]
-            cube_dist = np.linalg.norm(cube_pos - claw_pos)
-#             print("claw_pos", claw_pos[2])
-#             print("delta", delta)
-#             print("dist", np.linalg.norm(claw_pos - cube_pos))
 
+            # contact logic
             if np.linalg.norm(raw_dict["robot0_gripper_joint_force"]) > 0.35:
                 print("\t\tcontact")
                 hasContacted = True #marks first contact
                 timeSinceContact = 0 #resets the contact counter
-
+            # intervention for searching
             if not intervention and (hasContacted or self.step > 50) and claw_pos[2] > 0.92 and reward < 0.99:
-#             elif not(intervention) and status < 7 and ((hasContacted and timeSinceContact > 8 and np.linalg.norm(gripper_pos) > 0.05)):
                 print("\tINTERVENTION SEARCH TIME")
                 status = 0 # starts the grabbing sequence
                 intervention = True
@@ -218,13 +211,12 @@ class Workspace(object):
                 status = 3 #starts the grabbing sequence
                 intervention = True
 
-
             #if we are in intervention mode, this is how we generate the actions
             if intervention:
                  #what to do at each state
                 if status == 0: #reach for table
                     destination = cube_pos.copy()
-                    destination[1] -= 0.12
+                    destination[1] -= 0.12 # some magic numbers that are tuned to this specific environment
                     destination[2] += 0.02
                 elif status == 1: #move to the side
                     destination = cube_pos.copy()
@@ -254,7 +246,7 @@ class Workspace(object):
                 #displacement is the vector that we want to travel in
                 displacement = destination - claw_pos
 
-                #state transtions
+                #switchboard
                 if claw_pos[2] > 0.95 and status == 7:
                     status = 8
                 if np.linalg.norm(gripper_pos) < 0.045 and status == 6: #used to be 0.04
@@ -281,7 +273,6 @@ class Workspace(object):
 
                 displacement = np.multiply(displacement, 5)
                 displacement = [component if -1 <= component <= 1 else -1 if component < -1 else 1 for component in displacement] #capping this vector
-#                 print("INTERVENTION")
                 print(status_dict[status])
 
                 action = np.append(displacement, gripperStatus)
@@ -296,7 +287,6 @@ class Workspace(object):
 
             raw_dict, next_lowdim, next_obs, reward, done, info = self.env.step(action)
 
-            # allow infinite bootstrap
             done = float(done)
             done_no_max = 0 if episode_step + 1 == self.env._max_episode_steps else done
             episode_reward += reward
@@ -326,8 +316,6 @@ class Workspace(object):
         print("intervention prop: ", intervention_prop / cfg.episodeLength)
 
         self.video_recorder.clean_up()
-#         raw_dict, lowdim, obs = self.env.reset()
-
         if success and intervention_prop > 0:
             self.new_replay_buffer.add(buffer_list, priority = intervention_list)
             print("****** ADDED ****** and we are at ", self.new_replay_buffer.idx)
@@ -335,15 +323,10 @@ class Workspace(object):
 
     def single_demo_pick_place(self, iteration, cfg):
         episode, episode_reward, episode_step, done = 0, 0, 1, True
-        CAP = 0.15 #CHANGE THIS
-        done = False
         episode_step = 0
         episode += 1
 
         success = 0
-        buffer_list = list()
-        gripperStatus = 0
-        liftStatus = False
         buffer_list = list()
 
         self.video_recorder.new_recorder_init(f'{iteration}.gif', enabled= True)
@@ -356,7 +339,6 @@ class Workspace(object):
         status_dict = {0 : "sidereach", 1 : "sidestep", 2 : "asdfasdad", 3: "moveup", 4 : "positioning",
                        5 : "blockreach", 6 : "grabbing", 7 : "lifting", 8: "position", 9: "drop"}
         reward = 0 #init reward
-        initial_cube = raw_dict["cube_pos"] #setting the search target
 
         hasContacted = False
         hasMoved = False #these are related, but moved uses the "sound"
@@ -382,15 +364,12 @@ class Workspace(object):
             cube_pos = raw_dict["cube_pos"]
             claw_pos = raw_dict["robot0_eef_pos"]
             gripper_pos = raw_dict["robot0_gripper_qpos"]
-            sound = raw_dict["object_sound"]
-            cube_dist = np.linalg.norm(cube_pos - claw_pos)
-#             print(claw_pos[2])
 
             if np.linalg.norm(raw_dict["robot0_gripper_joint_force"]) > 0.35:
                 print("\t\tcontact")
                 hasContacted = True #marks first contact
                 timeSinceContact = 0 #resets the contact counter
-#             print(claw_pos[0], "\t", claw_pos[1])
+            # searching intervention
             if not intervention and (hasContacted or self.step > 50) and claw_pos[2] > 0.92 and np.linalg.norm(claw_pos - cube_pos) > 0.05 and claw_pos[1] > -0.1:
                 print("\tINTERVENTION SEARCH TIME")
                 status = 0 # starts the grabbing sequence
@@ -400,7 +379,6 @@ class Workspace(object):
                 print("\tINTERVENTION GRAB TIME")
                 status = 3 #starts the grabbing sequence
                 intervention = True
-
 
             #if we are in intervention mode, this is how we generate the actions
             if intervention:
@@ -485,7 +463,6 @@ class Workspace(object):
 
             raw_dict, next_lowdim, next_obs, reward, done, info = self.env.step(action)
 
-            # allow infinite bootstrap
             done = float(done)
             done_no_max = 0 if episode_step + 1 == self.env._max_episode_steps else done
             episode_reward += reward
@@ -517,13 +494,11 @@ class Workspace(object):
         if reward > 0.99:
             success = 1
         self.video_recorder.clean_up()
-#         raw_dict, lowdim, obs = self.env.reset()
 
         if success and intervention_prop > 0:
             self.new_replay_buffer.add(buffer_list, priority = intervention_list)
             print("****** ADDED ****** and we are at ", self.new_replay_buffer.idx)
         return success and intervention_prop > 0 #discard runs where there is no corrections
-
 
 
     def evaluate(self, successes):
@@ -542,7 +517,7 @@ class Workspace(object):
                 _, lowdim, obs, reward, done, info = self.env.step(action)
                 sys.stdout.write("..")
                 sys.stdout.flush()
-#                 if episode == 0:
+
                 self.video_recorder.simple_record(self.env.render_highdim_list(200, 200, ["agentview", "sideview"]))
                 prop_success = prop_success + 1 if not(this_success) and reward > 0.99 else prop_success
                 this_success = True if reward > 0.99 else this_success
@@ -576,7 +551,6 @@ class Workspace(object):
         try_counter = 0
 
         while successes <= numMoreSuccesses:
-
             if self.new_replay_buffer.idx > self.cfg.warmup and isSuccessful: #prevents double-training on a failure
                 print("UPDATING BUFFER ITERABLE")
                 del self.new_replay_buffer_iterable

@@ -1,3 +1,5 @@
+# helps with logging things. Pretty much unchanged from original DRQ implementation
+
 import csv
 import json
 import os
@@ -10,7 +12,7 @@ import torch
 import torchvision
 from termcolor import colored
 from torch.utils.tensorboard import SummaryWriter
-import faulthandler 
+import faulthandler
 
 COMMON_TRAIN_FORMAT = [('episode', 'E', 'int'), ('step', 'S', 'int'),
                        ('episode_reward', 'R', 'float'),
@@ -168,7 +170,7 @@ class Logger(object):
         if self._sw is not None:
             self._sw.add_histogram(key, histogram, step)
 
-    def log(self, key, value, step, n=1, log_frequency=1): #default log everytime you call this function 
+    def log(self, key, value, step, n=1, log_frequency=1): #default log everytime you call this function
         if not self._should_log(step, log_frequency):
             return
         assert key.startswith('train') or key.startswith('eval')
@@ -194,7 +196,7 @@ class Logger(object):
             return
         assert key.startswith('train') or key.startswith('eval')
         self._try_sw_log_image(key, image, step)
-        
+
     def log_video(self, key, frames, step, log_frequency=None):
         if not self._should_log(step, log_frequency):
             return
@@ -219,4 +221,3 @@ class Logger(object):
         else:
             raise f'invalid log type: {ty}'
 
-            

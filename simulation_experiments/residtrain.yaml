@@ -1,11 +1,11 @@
 # env
 env: drq-robosuite
-action_repeat: 1 #not used for now 
+action_repeat: 1 #not used for now
 # train
 num_train_steps: 500000
 num_train_iters: 1
 num_seed_steps: 500
-replay_buffer_capacity: 60000 
+replay_buffer_capacity: 60000
 seed: ??
 # eval
 eval_frequency: 1000
@@ -19,44 +19,42 @@ device: cuda
 image_size: 84
 image_pad: 4
 horizon: 500
-system: sim 
+system: sim
 
 use_lowdim: true
 # global params
 lr: 1e-3
-# IMPORTANT: please use a batch size of 512 to reproduce the results in the paper. Hovewer, with a smaller batch size it still works well.
-
 
 ##### MODE OF OPERATION ######
 eval_only: false
 load_dir: ../../../BlockedPickPlace_residual/2021.10.18/130121_seed=20/245000_
 
-# things that we can't change without breaking something 
+# things that we can't change without breaking something
 lowdim_stack: 10
 frame_stack: 3
 use_squashed: True #squashed vs not squashed distributions
 
 #####RUN CHANGES HERE ############
-# core adjustments 
-stack: 10 
+# core adjustments
+stack: 10
 step: 100000
 num_demos: 50
 orig_seed: ${seed}
 
-actor_root: /iris/u/maxjdu/communal_results/
-demo_root: /iris/u/maxjdu/communal_demos/
-actor_name: ${environmentName}_${num_demos}_${orig_seed}/${step}_ 
+actor_root: /iris/u/maxjdu/communal_results/ #change this
+demo_root: /iris/u/maxjdu/communal_demos/ #change this
+actor_name: ${environmentName}_${num_demos}_${orig_seed}/${step}_
 demo_file: ${environmentName}_${num_demos}_${orig_seed}/resid/demos.pkl
 
-#logging 
+#logging
 runName: ${environmentName}_${num_demos}_${orig_seed}/resid/
 
 #modality and environment
-environmentName: IndicatorBoxBlock #IMPORTANT: this is the environment that is run 
+environmentName: IndicatorBoxBlock #IMPORTANT: this is the environment that is run
 modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel]
 cameraName: agentview_image
 
-#misc training parameters 
+#misc training parameters
 batch_size: 16
 expert_workers: 4 #CHANGE BACK
 memory_workers: 4 #CHANGE BACK
@@ -88,10 +86,10 @@ episodeLength: 500
 # robot0_proprio-state  :  (32,) CONCATENATED from cos, sin, vel, pos, quat, qpos, qvel
 # image-state  :  (84, 84, 3) DON'T USE THIS, use agentview_image instead
 # object-state  :  (18,)
-# robot0_gripper_act_force (2,) #don't use this 
+# robot0_gripper_act_force (2,) #don't use this
 # robot0_gripper_joint_force (2,) #finger force (not wrist force; use this one)
 
-#sidenote: gripper is negative in the action, gripper closed is positive in the action 
+#sidenote: gripper is negative in the action, gripper closed is positive in the action
 
 # agent configuration
 agent:
@@ -119,7 +117,7 @@ resid_agent:
   name: drq
   class: core.drq_memory.DRQAgent
   params:
-    obs_shape: ${agent.params.obs_shape} 
+    obs_shape: ${agent.params.obs_shape}
     action_shape: ${agent.params.action_shape}
     action_range: ${agent.params.action_range}
     lowdim_dim: ??? #to be combined later
@@ -192,12 +190,10 @@ resid_encoder:
       output_dim: 35
       output_logits: False
 
-# get_out: ../../../../ #to get out of the original logging directory 
 
 log_dir: /iris/u/maxjdu/communal_results/${runName}
 # hydra configuration
-hydra: 
+hydra:
   name: ${env}
   run:
     dir: ${log_dir}
-#     dir: ./runs/${runName}/${now:%Y.%m.%d}/${now:%H%M%S}_${hydra.job.override_dirname}

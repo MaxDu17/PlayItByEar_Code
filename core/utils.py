@@ -1,3 +1,5 @@
+# some utility functions
+
 import math
 import os
 import random
@@ -43,7 +45,7 @@ def set_seed_everywhere(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-    
+
 def make_dir(*path_parts):
     dir_path = os.path.join(*path_parts)
     try:
@@ -94,7 +96,7 @@ def to_np(t):
     else:
         return t.cpu().detach().numpy()
 
-#extracting data from vector 
+#extracting data from vector
 def obsOnly(obs, cfg): #only works with non-object observation
     return obs[0:cfg.agent.params.lowdim_dim]
 
@@ -103,17 +105,17 @@ def obsAndImage(obs, cfg, non_stacked_size = None):
         image = np.reshape(obs[cfg.agent.params.lowdim_dim:], (cfg.image_size, cfg.image_size, 3))
         ending = cfg.agent.params.lowdim_dim
     else:
-        non_stacked_size = int(non_stacked_size)#cast to prevent indexing error 
+        non_stacked_size = int(non_stacked_size)#cast to prevent indexing error
         image = np.reshape(obs[non_stacked_size:], (cfg.image_size, cfg.image_size, 3))
         ending = non_stacked_size
-    
+
     assert np.shape(image) == (cfg.image_size, cfg.image_size, 3)
     image = image.astype(np.uint8)
     image = np.flipud(image) - np.zeros_like(image)
-    
+
     return obs[0:ending], image
 
-#this is for the inputs without stacking 
+#this is for the inputs without stacking
 class FrameStack_Lowdim(gym.Wrapper):
     def __init__(self, env, cfg, k, l_k, frameMode = 'cat', demo = False, audio = False):
         self.frameMode = frameMode
@@ -127,39 +129,38 @@ class FrameStack_Lowdim(gym.Wrapper):
         elif frameMode == 'stack':
             assert l_k == k, "in this mode, the stacks must be of equal size"
             shp = (1, 3, cfg.image_size, cfg.image_size)
-            self.lowdim_space = [k, 1, cfg.agent.params.lowdim_dim] #remember that lowdim is unmodified 
+            self.lowdim_space = [k, 1, cfg.agent.params.lowdim_dim] #remember that lowdim is unmodified
 #             input(cfg.agent.params.lowdim_dim)
         else:
             raise Exception("invalid mode! Must be either 'cat' or 'stack'")
-            
+
         gym.Wrapper.__init__(self, env)
         self._k = k
         self._l_k = l_k
         self._frames = deque([], maxlen=k)
         self._ldframes = deque([], maxlen=l_k)
         self._audframes = deque([], maxlen=l_k)
-        
+
         self.observation_space = gym.spaces.Box(
             low=0,
             high=1,
             shape=((shp[0] * k,) + shp[1:]),
             dtype=env.observation_space.dtype)
-        
+
         self._max_episode_steps = cfg.horizon
         self.cfg = cfg
         self.mode = self.cfg.system
         assert self.mode == "sim" or self.mode == "real"
-        
+
         self.demo = demo
         self.audio = audio
         assert not(demo) or self.mode == 'sim', "demo reset only works in sim"
-        
-        #self._max_episode_steps = env._max_episode_steps
+
     def reset(self):
         if self.demo:
             print("mode: demo")
             ob_dict, obs_raw = self.env.demo_reset()
-            if self.frameMode == 'cat': 
+            if self.frameMode == 'cat':
                 lowdim, image = obsAndImage(obs_raw, self.cfg, self.non_stacked_space)
             else:
                 lowdim, image = obsAndImage(obs_raw, self.cfg)
@@ -169,7 +170,7 @@ class FrameStack_Lowdim(gym.Wrapper):
             for _ in range(self._l_k):
                 self._ldframes.append(lowdim)
             return ob_dict, self._get_low(), self._get_obs()
-        
+
         if self.audio and self.frameMode == 'cat':
             print("mode: audio and concatenate (single audio)")
             assert self.mode == 'real', "audio doesn't exist in sim!"
@@ -181,13 +182,13 @@ class FrameStack_Lowdim(gym.Wrapper):
                 self._frames.append(image.copy())
             for _ in range(self._l_k):
                 self._ldframes.append(lowdim.copy())
-            return  self._get_low(), self._get_obs(), audio #quirk with the audio; automatically assume that we only have one copy 
+            return  self._get_low(), self._get_obs(), audio #quirk with the audio; automatically assume that we only have one copy
 
     def step(self, action):
         if self.demo:
 #             print("mode: demo")
             ob_dict, obs_raw, reward, done, info  = self.env.demo_step(action)
-            if self.frameMode == 'cat': 
+            if self.frameMode == 'cat':
                 lowdim, image = obsAndImage(obs_raw, self.cfg, self.non_stacked_space)
             else:
                 lowdim, image = obsAndImage(obs_raw, self.cfg)
@@ -196,14 +197,14 @@ class FrameStack_Lowdim(gym.Wrapper):
             self._frames.append(image.copy())
             self._ldframes.append(lowdim.copy())
             return ob_dict, self._get_low(), self._get_obs(), reward, done, info
-        
+
         if self.audio and self.frameMode == 'cat':
 #             print("mode: audio and concatenate (single audio)")
             assert self.mode == 'real', "audio doesn't exist in sim!"
             obs_raw, reward, done, info = self.env.step(action)
 
             lowdim, image, audio = obs_raw
-            image = np.transpose(image, (2, 0, 1)) 
+            image = np.transpose(image, (2, 0, 1))
             self._frames.append(image.copy())
             self._ldframes.append(lowdim.copy())
             return self._get_low(), self._get_obs(), audio, reward, done, info
@@ -213,28 +214,28 @@ class FrameStack_Lowdim(gym.Wrapper):
         if self.frameMode == 'cat':
             return np.concatenate(list(self._frames), axis=0)
         return np.stack(list(self._frames), axis=0)
-    
+
     def _get_low(self):
         assert len(self._ldframes) == self._l_k
         if self.frameMode == 'cat':
             return np.concatenate(list(self._ldframes), axis=0)
         return np.expand_dims(np.stack(list(self._ldframes), axis=0), axis = 1)
-    
+
     def _get_audio(self):
         assert len(self._audframes) == self._k
         assert self.frameMode == 'stack', "in cat mode, audio is singular!"
-        aud_frames = np.stack(list(self._audframes), axis=0)  
+        aud_frames = np.stack(list(self._audframes), axis=0)
 #         print("ABLATE AUDIO")
 #         aud_frames = np.zeros_like(aud_frames)
-        return aud_frames 
+        return aud_frames
 
 #this is a special class that allows history AND stacking
 class FrameStack_StackCat(gym.Wrapper):
     def __init__(self, env, cfg, k, l_k, stack_depth, demo = False, audio = False):
         shp = (1, 3 * k, cfg.image_size, cfg.image_size)
-        self.lowdim_space = [stack_depth, 1, l_k * cfg.agent.params.lowdim_dim] #remember that lowdim is unmodified 
+        self.lowdim_space = [stack_depth, 1, l_k * cfg.agent.params.lowdim_dim] #remember that lowdim is unmodified
 #             input(cfg.agent.params.lowdim_dim)
-            
+
         gym.Wrapper.__init__(self, env)
         self._k = k
         self._l_k = l_k
@@ -242,56 +243,56 @@ class FrameStack_StackCat(gym.Wrapper):
         self._frames = deque([], maxlen=stack_depth)
         self._ldframes = deque([], maxlen=stack_depth)
         self._auxldframes = deque([], maxlen=l_k)
-        
+
         self._audframes = deque([], maxlen=stack_depth) #no cat stack is done for audio , used to be l_k
-        
+
         self.observation_space = gym.spaces.Box(
             low=0,
             high=1,
             shape=((shp[0] * stack_depth,) + shp[1:]),
             dtype=env.observation_space.dtype)
-        
+
         self._max_episode_steps = cfg.horizon
         self.cfg = cfg
         self.mode = self.cfg.system
         assert self.mode == "sim" or self.mode == "real"
-        
+
         self.demo = demo
         self.audio = audio
-        self.stack_depth = stack_depth 
+        self.stack_depth = stack_depth
         assert not(demo) or self.mode == 'sim', "demo reset only works in sim"
         self.non_stacked_space = cfg.agent.params.lowdim_dim / l_k
         #self._max_episode_steps = env._max_episode_steps
-        
+
     def reset(self):
         if self.demo:
             print("mode: demo")
-            ob_dict, obs_raw = self.env.demo_reset() 
+            ob_dict, obs_raw = self.env.demo_reset()
             lowdim, image = obsAndImage(obs_raw, self.cfg, self.non_stacked_space)
 
             image = np.transpose(image, (2, 0, 1))
-            for _ in range(self._k): #filling up the auxilary buffers 
+            for _ in range(self._k): #filling up the auxilary buffers
                 self._auxframes.append(image)
             for _ in range(self._l_k):
                 self._auxldframes.append(lowdim)
-            for _ in range(self.stack_depth): 
-                self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer 
+            for _ in range(self.stack_depth):
+                self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer
                 self._ldframes.append(np.concatenate(list(self._auxldframes.copy())))
-                
+
             return ob_dict, self._get_low(), self._get_obs()
-       
-        elif self.audio: 
+
+        elif self.audio:
             assert self.mode == 'real', "audio doesn't exist in sim!"
             print("mode: audio")
             obs_raw = self.env.reset()
-            lowdim, image, audio = obs_raw    
+            lowdim, image, audio = obs_raw
             image = np.transpose(image, (2, 0, 1))
-            for _ in range(self._k): #filling up the auxilary buffers 
+            for _ in range(self._k): #filling up the auxilary buffers
                 self._auxframes.append(image)
             for _ in range(self._l_k):
                 self._auxldframes.append(lowdim)
-            for _ in range(self.stack_depth): 
-                self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer 
+            for _ in range(self.stack_depth):
+                self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer
                 self._ldframes.append(np.concatenate(list(self._auxldframes.copy())))
                 self._audframes.append(audio.copy())
             return  self._get_low(), self._get_obs(), self._get_audio()
@@ -303,25 +304,25 @@ class FrameStack_StackCat(gym.Wrapper):
             else:
                 lowdim, image, audio = obs_raw
             image = np.transpose(image, (2, 0, 1))
-            for _ in range(self._k): #filling up the auxilary buffers 
+            for _ in range(self._k): #filling up the auxilary buffers
                 self._auxframes.append(image)
             for _ in range(self._l_k):
                 self._auxldframes.append(lowdim)
-            for _ in range(self.stack_depth): 
-                self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer 
+            for _ in range(self.stack_depth):
+                self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer
                 self._ldframes.append(np.concatenate(list(self._auxldframes.copy())))
             return self._get_low(), self._get_obs()
 
     def step(self, action):
         if self.demo:
-            ob_dict, obs_raw, reward, done, info  = self.env.demo_step(action) 
+            ob_dict, obs_raw, reward, done, info  = self.env.demo_step(action)
             lowdim, image = obsAndImage(obs_raw, self.cfg, self.non_stacked_space)
 
 #             lowdim, image = obsAndImage(obs_raw, self.cfg)
             image = np.transpose(image, (2, 0, 1))
             self._auxframes.append(image.copy())
             self._auxldframes.append(lowdim.copy())
-            self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer 
+            self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer
             self._ldframes.append(np.concatenate(list(self._auxldframes.copy())))
             return ob_dict, self._get_low(), self._get_obs(), reward, done, info
 
@@ -331,12 +332,12 @@ class FrameStack_StackCat(gym.Wrapper):
             obs_raw, reward, done, info = self.env.step(action)
             lowdim, image, audio = obs_raw
 
-            image = np.transpose(image, (2, 0, 1)) 
+            image = np.transpose(image, (2, 0, 1))
             self._auxframes.append(image.copy())
             self._auxldframes.append(lowdim.copy())
-            self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer 
+            self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer
             self._ldframes.append(np.concatenate(list(self._auxldframes.copy())))
-            
+
             self._audframes.append(audio.copy())
             return self._get_low(), self._get_obs(), self._get_audio(), reward, done, info
         else:
@@ -347,19 +348,19 @@ class FrameStack_StackCat(gym.Wrapper):
             else:
                 lowdim, image, audio = obs_raw
 
-            image = np.transpose(image, (2, 0, 1)) 
-            
-            
+            image = np.transpose(image, (2, 0, 1))
+
+
             self._auxframes.append(image.copy())
             self._auxldframes.append(lowdim.copy())
-            self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer 
+            self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer
             self._ldframes.append(np.concatenate(list(self._auxldframes.copy())))
             return self._get_low(), self._get_obs(), reward, done, info
 
     def _get_obs(self):
-        assert len(self._frames) == self.stack_depth 
+        assert len(self._frames) == self.stack_depth
         frames = np.stack(list(self._frames), axis=0)
-        
+
         ####### ablating history #######
 #         print("ABLATE HISTORY")
 #         frames[:, : -3, :, :] = 0
@@ -368,11 +369,11 @@ class FrameStack_StackCat(gym.Wrapper):
         ####### ablating video #######
 #         print("ABLATE VIDEO")
 #         frames = np.zeros_like(frames)
-        
+
         return frames
-    
+
     def _get_low(self):
-        assert len(self._ldframes) == self.stack_depth 
+        assert len(self._ldframes) == self.stack_depth
         lowdim_frames = np.expand_dims(np.stack(list(self._ldframes), axis=0), axis = 1)
         #### ablating audio ###
 #         print("ABLATE AUDIO")
@@ -380,21 +381,21 @@ class FrameStack_StackCat(gym.Wrapper):
 #         for j in range(10):
 #             for i in range(10):
 #                 lowdim_frames[j, :, 13 * i : 13 * i + 6] = 0
-        #### ABLATE AUDIO ##### 
-        
+        #### ABLATE AUDIO #####
+
         ####### ablating history #######
 #         print("ABLATE HISTORY")
 #         lowdim_frames[:, :, :-7] = 0
-        
-        return lowdim_frames 
-    
+
+        return lowdim_frames
+
     def _get_audio(self):
-        assert len(self._audframes) == self.stack_depth 
-        aud_frames = np.stack(list(self._audframes), axis=0)  
+        assert len(self._audframes) == self.stack_depth
+        aud_frames = np.stack(list(self._audframes), axis=0)
 #         print("ABLATE AUDIO")
 #         aud_frames = np.zeros_like(aud_frames)
         return aud_frames
-    
+
 class TanhTransform(pyd.transforms.Transform):
     domain = pyd.constraints.real
     codomain = pyd.constraints.interval(-1.0, 1.0)
@@ -432,14 +433,14 @@ class SquashedNormal(pyd.transformed_distribution.TransformedDistribution):
         self.base_dist = pyd.Normal(loc, scale)
         self.transforms = [TanhTransform()]
         super().__init__(self.base_dist, self.transforms)
-    
+
     def log_prob(self, values): #THIS IS PROBLEMATIC
         l_prob = super().log_prob(values)
         if torch.isnan(l_prob).any():
             return super().log_prob(torch.tanh(values))
         return l_prob
 #         return super().log_prob(torch.tanh(values))
-    
+
     @property
     def mean(self):
         mu = self.loc

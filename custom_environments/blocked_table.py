@@ -24,7 +24,7 @@ class BlockedTableArena(Arena):
         table_friction=(1, 0.005, 0.0001),
         table_offset=(0, 0, 0.8),
         has_legs=True,
-        xml="arenas/blocked_table.xml", #change back to blocked_table.xml, or for higher table use blocked_table_higher.xml
+        xml="arenas/blocked_table.xml", # change this to where you put this file
     ):
         super().__init__(xml_path_completion(xml))
 

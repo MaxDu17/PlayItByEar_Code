@@ -1,3 +1,5 @@
+# Behavior cloning implementation
+
 import platform
 print(platform.node())
 import copy
@@ -67,8 +69,6 @@ def worker_init_fn(worker_id):
 class Workspace(object):
     def __init__(self, cfg):
         self.work_dir = cfg.log_dir
-#         self.work_dir += f"/ABLATE_VIDEO/" if cfg.eval_only else ""
-#         self.work_dir += f"/{cfg.checkpoint}/" if cfg.eval_only else ""
         self.work_dir += f"/balanced_batches/" if cfg.balanced_batches else ""
 
         try:
@@ -80,9 +80,6 @@ class Workspace(object):
         print(f'workspace: {self.work_dir}')
         print("cuda status: ", torch.cuda.is_available())
         self.cfg = cfg
-#         copyfile("../../../imitationtrain_memory.yaml", "bc_config.yaml") #makes sure we keep track of hyperparameters
-#         copyfile("../../../imitationtrain_memory.py", "train.py")
-#         copyfile("../../../core/drq_memory.py", "drq_memory.py")
 
         self.logger = Logger(cfg = cfg,
                              log_dir = self.work_dir,
@@ -96,7 +93,6 @@ class Workspace(object):
         self.env = make_env(cfg)
 
         lowdim, obs = self.env.reset() #let's mold our model to what the environment outputs
-#         input(lowdim.shape)
         cfg.agent.params.obs_shape = np.shape(obs)[1:]
         #obs is returned as [stack, 3, 84, 84]. We want [3, 84, 84]
         #batch comes first, so [batch, stack, 3, 84, 84]
@@ -159,7 +155,6 @@ class Workspace(object):
                 with utils.eval_mode(self.agent):
                     action = self.agent.act(lowdim, obs, sample=False, squash = self.cfg.use_squashed)
                 lowdim, obs, reward, done, info = self.env.step(action)
-#                 print(np.linalg.norm(lowdim[-1, :, 0:6]))
                 obs = obs / 255.
                 sys.stdout.write("..")
                 sys.stdout.flush()
@@ -187,7 +182,6 @@ class Workspace(object):
         if episodes is not None:
             print(prop_success)
             self.logger.dump(self.step)
-
 
     #this self-contained function trains the model and evaluates it
     def run(self):

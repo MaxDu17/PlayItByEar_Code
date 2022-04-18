@@ -1,6 +1,6 @@
 # env
 env: drq-robosuite
-action_repeat: 1 #not used for now 
+action_repeat: 1 #not used for now
 # train
 num_train_steps: 5000000
 num_train_iters: 1
@@ -19,7 +19,7 @@ device: cuda
 image_size: 84
 image_pad: 4
 horizon: 500
-system: sim #not used 
+system: sim #not used
 
 # global params
 lr: 1e-3
@@ -29,16 +29,16 @@ batch_size: 16
 frame_stack: 3
 lowdim_stack: 10
 
-###### BEGIN CHANGES HERE####### 
-#core adjustments 
-environmentName: BlockedPickPlace #IMPORTANT: this is the environment that is run 
-stack: 10 
+###### BEGIN CHANGES HERE#######
+#core adjustments
+environmentName: BlockedPickPlace #IMPORTANT: this is the environment that is run
+stack: 10
 step: 100000
 orig_seed: ${seed}
 
 actor_root: /iris/u/maxjdu/communal_results/
 demo_root: /iris/u/maxjdu/communal_demos/
-actor_name: ${environmentName}_${num_demos}_${orig_seed}/${step}_ 
+actor_name: ${environmentName}_${num_demos}_${orig_seed}/${step}_
 demo_file: ${environmentName}_${num_demos}/demos.pkl
 num_demos: 50
 
@@ -46,7 +46,7 @@ num_demos: 50
 modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel]
 cameraName: agentview_image
 
-#name of the folder directory 
+#name of the folder directory
 runName: ${environmentName}_${num_demos}_${orig_seed}
 
 #####RUN END CHANGES HERE ##########
@@ -70,10 +70,10 @@ runName: ${environmentName}_${num_demos}_${orig_seed}
 # robot0_proprio-state  :  (32,) CONCATENATED from cos, sin, vel, pos, quat, qpos, qvel
 # image-state  :  (84, 84, 3) DON'T USE THIS, use agentview_image instead
 # object-state  :  (18,)
-# robot0_gripper_act_force (2,) #don't use this 
+# robot0_gripper_act_force (2,) #don't use this
 # robot0_gripper_joint_force (2,) #finger force (not wrist force; use this one)
 
-#sidenote: gripper is negative in the action, gripper closed is positive in the action 
+#sidenote: gripper is negative in the action, gripper closed is positive in the action
 
 # agent configuration
 agent:
@@ -96,12 +96,12 @@ agent:
     critic_target_update_frequency: 2
     batch_size: ${batch_size}
     log_frequency: 20
-    
+
 resid_agent:
   name: drq
   class: core.drq_memory.DRQAgent
   params:
-    obs_shape: ${agent.params.obs_shape} 
+    obs_shape: ${agent.params.obs_shape}
     action_shape: ${agent.params.action_shape}
     action_range: ${agent.params.action_range}
     lowdim_dim: ??? #to be combined later
@@ -125,7 +125,7 @@ critic:
     action_shape: ${agent.params.action_shape}
     hidden_dim: 1024
     hidden_depth: 2
-    
+
 actor:
   class: core.drq_memory.Actor
   params:
@@ -174,7 +174,6 @@ resid_encoder:
       output_dim: 35
       output_logits: False
 
-# get_out: ../../ #to get out of the original logging directory 
 log_dir: /iris/u/maxjdu/communal_results/${runName}/resid/
 # hydra configuration
 hydra:

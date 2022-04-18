@@ -1,10 +1,10 @@
 # env
 env: drq-robosuite
-action_repeat: 1 #not used for now 
+action_repeat: 1 #not used for now
 # train
 num_train_iters: 1
 num_seed_steps: 1000
-replay_buffer_capacity: 100000 #not used 
+replay_buffer_capacity: 100000 #not used
 
 # misc
 log_frequency_step: 1000
@@ -12,17 +12,15 @@ log_save_tb: true
 save_video: true
 device: cuda
 # observation
-image_size: 84 #224 #84 
+image_size: 84 #224 #84
 image_pad: 4
 horizon: 500
 use_lowdim: true
 # global params
 lr: 1e-3
-# IMPORTANT: please use a batch size of 512 to reproduce the results in the paper. Hovewer, with a smaller batch size it still works well.
-
 
 ######Mode of operation########
-#this eval_only will be phased out in favor of a specialied script that tests everything 
+#this eval_only will be phased out in favor of a specialied script that tests everything
 eval_only: False #this is for evaluation runs without training
 checkpoint: 100000
 orig_seed: ${seed}
@@ -31,28 +29,28 @@ load_folder: ${environmentName}_${number_demos}_${orig_seed}
 load_dir: ${load_folder}/ABLATE_MEM/${checkpoint}_
 balanced_batches: False
 
-#balanced batch training after corrections 
+#balanced batch training after corrections
 priority: True #if this is true, we only train on the corrections (keep for the ablations)
-corrections_file: ${load_folder}/corrections_aggressive/demos_finished.pkl #fill this in later 
+corrections_file: ${load_folder}/corrections_aggressive/demos_finished.pkl #fill this in later
 
 #########################
 
-#things that we can't change without breaking something  
+#things that we can't change without breaking something
 actor_root: /iris/u/maxjdu/communal_results/
 demo_root: /iris/u/maxjdu/communal_demos/
 use_squashed: True #squashed vs not squashed distributions
 lowdim_stack: 10
-frame_stack: 3 
+frame_stack: 3
 system: sim #sim for the mujoco stuff, and "real" for franka
 
 #####RUN CHANGES HERE ############
-#core adjustements 
+#core adjustements
 seed: ??
 number_demos: 50
 demo_file: ${environmentName}_${number_demos}/demos.pkl
 stack: 1 #used to be 10
 
-#misc training parameters 
+#misc training parameters
 batch_size: 16 #used to be 32
 num_train_steps: 110000
 eval_frequency: 10000
@@ -60,12 +58,12 @@ num_eval_episodes: 20 # used to be 20
 expert_workers: 4
 correction_workers: 4
 
-#environment parameters 
-environmentName: BlockedPickPlace #IMPORTANT: this is the environment that is run 
-modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel] #object sound is 6d 
+#environment parameters
+environmentName: BlockedPickPlace #IMPORTANT: this is the environment that is run
+modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel] #object sound is 6d
 cameraName: agentview_image
 
-#logging 
+#logging
 # runName: ${load_folder}
 runName: ${environmentName}SCRATCH_${number_demos}_${seed}
 #####CHANGES END HERE ##########
@@ -94,7 +92,7 @@ runName: ${environmentName}SCRATCH_${number_demos}_${seed}
 # image-state  :  (84, 84, 3) DON'T USE THIS, use agentview_image instead
 # object-state  :  (18,)
 
-#sidenote: gripper is negative in the action, gripper closed is positive in the action 
+#sidenote: gripper is negative in the action, gripper closed is positive in the action
 
 # agent configuration
 agent:
@@ -146,7 +144,7 @@ encoder:
       output_dim: 35
       output_logits: False
 
-#name of the folder directory 
+#name of the folder directory
 
 log_dir: /iris/u/maxjdu/communal_results/${runName}
 
@@ -154,7 +152,4 @@ log_dir: /iris/u/maxjdu/communal_results/${runName}
 hydra:
   name: ${env}
   run:
-#     dir: ../../communal_results/${runName}_${seed}
-#     dir: ./runs/BC/${runName}_${hydra.job.override_dirname}_debugging
     dir: ${log_dir}
-#     dir: /iris/u/maxjdu/communal_results/${runName}_${seed}

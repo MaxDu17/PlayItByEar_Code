@@ -1,11 +1,6 @@
 # env
 env: drq-robosuite
-# IMPORTANT: if action_repeat is used the effective number of env steps needs to be
-# multiplied by action_repeat in the result graphs.
-# This is a common practice for a fair comparison.
-# See the 2nd paragraph in Appendix C of SLAC: https://arxiv.org/pdf/1907.00953.pdf
-# See Dreamer TF2's implementation: https://github.com/danijar/dreamer/blob/02f0210f5991c7710826ca7881f19c64a012290c/dreamer.py#L340
-action_repeat: 1 #not used for now 
+action_repeat: 1 #not used for now
 # train
 num_train_steps: 5000000
 num_train_iters: 1
@@ -28,10 +23,9 @@ horizon: 500 #not used here
 use_lowdim: true
 # global params
 lr: 1e-3
-# IMPORTANT: please use a batch size of 512 to reproduce the results in the paper. Hovewer, with a smaller batch size it still works well.
 batch_size: 128
 
-#for save and loading 
+#for save and loading
 eval_only: false
 load_dir: 2021.03.16/103232_
 
@@ -39,15 +33,14 @@ system: sim #sim for the mujoco stuff, and "real" for franka
 
 stack: 1
 
-environmentName: IndicatorBoxBlock #IMPORTANT: this is the environment that is run 
-# modalities: [robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel]
+environmentName: IndicatorBoxBlock #IMPORTANT: this is the environment that is run
 modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel]
 cameraName: agentview_image
 runName:  ${environmentName}_friction_${episodes}
 stacked: true
 
 #Other hyperparameters
-episodeLength: 250 #150 for occluded block, 250 for pick place 
+episodeLength: 250 #150 for occluded block, 250 for pick place
 episodes: 50
 recordFrq: 10
 sparseProp: 0.75
@@ -77,7 +70,7 @@ sparseProp: 0.75
 # cube_quat  :  (4,)
 # gripper_to_cube_pos  :  (3,)
 # gripper_force  :  (3,)
-# gripper_tip_force: (3, ) #for the force at the tip of the gripper 
+# gripper_tip_force: (3, ) #for the force at the tip of the gripper
 # gripper_torque  :  (3,)
 # object_sound  :  (2,)
 # robot0_proprio-state  :  (32,) CONCATENATED from cos, sin, vel, pos, quat, qpos, qvel
@@ -136,8 +129,6 @@ encoder:
       num_filters: 32
       output_dim: 35
       output_logits: False
-
-#name of the folder directory 
 
 
 # hydra configuration

@@ -1,12 +1,10 @@
 # env
 env: drq-robosuite
-action_repeat: 1 #not used for now 
+action_repeat: 1 #not used for now
 # train
-# replay_buffer_capacity: -100 #should not be used
 seed: ??
 # eval
 eval_frequency: 1000
-# num_eval_episodes: 4 #NOT USED
 # misc
 log_frequency_step: 1000
 log_save_tb: true
@@ -15,48 +13,47 @@ device: cuda
 # observation
 image_size: 84
 image_pad: 4
-horizon: 100 #not used 
+horizon: 100 #not used
 # global params
 lr: 1e-3
 system: real
 
-#### mode of operation ##### 
+#### mode of operation #####
 eval_only: True
 checkpoint: 38
 load_folder: FrankaKeyQuietMove2_50_30
 load_dir: ${load_folder}/11000_CORRECTIONS_2/${checkpoint}_
-# load_dir: ${load_folder}/${checkpoint}_
 balanced_batches: false
 
-#things that we can't change without breaking something 
+#things that we can't change without breaking something
 lowdim_stack: 10
-frame_stack: 3 
+frame_stack: 3
 use_squashed: True #squashed vs not squashed distributions
 raw_lowdim: 7
 results_root: /iris/u/maxjdu/communal_results/
 demos_root: /iris/u/maxjdu/communal_demos/
 
 #####RUN CHANGES HERE ############
-#core adjustments 
+#core adjustments
 episodeLength: 50
 setup_name: FrankaKeyQuietMove2
 number_demos: 50
 demo_file: ${demos_root}${setup_name}_${number_demos}/demos_finished.pkl
-stack: 10 #used to be 10 
+stack: 10 #used to be 10
 
-#audio stuff 
+#audio stuff
 audio_steps: ??
 audio_bins: ??
-audio_shape: ?? 
+audio_shape: ??
 audio_feature_dim: 10
 
-#misc training parameters 
+#misc training parameters
 batch_size: 16
 num_train_steps: 25000
 expert_workers: 1
 correction_workers: 1
 
-#logging 
+#logging
 runName: ${load_folder}
 # runName: ${setup_name}_${number_demos}_stack1_${seed} # before the seed
 
@@ -115,12 +112,11 @@ encoder:
       output_dim: 35
       output_logits: False
 
-#name of the folder directory 
+#name of the folder directory
 
 log_dir: ${results_root}${runName}
 # hydra configuration
 hydra:
   name: ${env}
   run:
-#     dir: ./real_runs/BC/${runName}_${hydra.job.override_dirname}_
     dir: ${log_dir}
