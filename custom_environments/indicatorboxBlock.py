@@ -152,7 +152,7 @@ class IndicatorBoxBlock(SingleArmEnv):
         camera_widths=256,
         camera_depths=False,
     ):
-       
+
         # settings for table top
         self.table_full_size = table_full_size
         self.table_friction = table_friction
@@ -286,9 +286,9 @@ class IndicatorBoxBlock(SingleArmEnv):
             rgba=[1, 0, 0, 1],
             material=redwood,
             density=2000, #used to be 2000
-            friction=5 #change back to 5 
+            friction=5 #change back to 5
         )
-        
+
         self.indicator = BoxObject(
             name="indicator",
             size_min=[0.020, 0.1, 0.1],  # [0.015, 0.015, 0.015],
@@ -313,11 +313,11 @@ class IndicatorBoxBlock(SingleArmEnv):
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )
-        
+
         # task includes arena, robot, and objects of interest
         self.model = ManipulationTask(
             mujoco_arena=mujoco_arena,
-            mujoco_robots=[robot.robot_model for robot in self.robots], 
+            mujoco_robots=[robot.robot_model for robot in self.robots],
             mujoco_objects=[self.cube, self.indicator],
         )
 
@@ -371,46 +371,40 @@ class IndicatorBoxBlock(SingleArmEnv):
                     sensor=s,
                     sampling_rate=self.control_freq,
                 )
-        @sensor(modality = modality)
-        def gripper_force(obs_cache):
-            return self.robots[0].get_sensor_measurement("gripper0_force_ee")/20#hardcoded for now
-        observables["gripper_force"] = Observable(name = "gripper_force", sensor = gripper_force, sampling_rate = self.control_freq)
-        
-        @sensor(modality = modality)
-        def gripper_torque(obs_cache):
-            return self.robots[0].get_sensor_measurement("gripper0_torque_ee")/20#hardcoded for now
-        observables["gripper_torque"] = Observable(name = "gripper_torque", sensor = gripper_torque, sampling_rate = self.control_freq)
-        
-        @sensor(modality = modality)
-        def gripper_tip_force(obs_cache):
-            return self.robots[0].get_sensor_measurement("gripper0_force_ee_tip")
-        observables["gripper_tip_force"] = Observable(name = "gripper_tip_force", sensor = gripper_tip_force, sampling_rate = self.control_freq)
-    
-#         @sensor(modality = modality)
-#         def object_sound(obs_cache):
-#             sound = np.zeros((2,))
-#             if self.sim.data.body_xpos[self.cube_body_id][2] < 0.84:
-#                 sound[0] = np.linalg.norm(self.sim.data.body_xvelr[self.cube_body_id][0:2])
-#                 sound[1] = np.linalg.norm(self.sim.data.body_xvelp[self.cube_body_id][0:2])
-#             return sound
-#         observables["object_sound"] = Observable(name = "object_sound", sensor = object_sound, sampling_rate = self.control_freq)
-#         return observables
-    
+        # @sensor(modality = modality)
+        # def gripper_force(obs_cache):
+        #     return self.robots[0].get_sensor_measurement("gripper0_force_ee")/20#hardcoded for now
+        # observables["gripper_force"] = Observable(name = "gripper_force", sensor = gripper_force, sampling_rate = self.control_freq)
+        #
+        # @sensor(modality = modality)
+        # def gripper_torque(obs_cache):
+        #     return self.robots[0].get_sensor_measurement("gripper0_torque_ee")/20#hardcoded for now
+        # observables["gripper_torque"] = Observable(name = "gripper_torque", sensor = gripper_torque, sampling_rate = self.control_freq)
+        #
+        # @sensor(modality = modality)
+        # def gripper_tip_force(obs_cache):
+        #     return self.robots[0].get_sensor_measurement("gripper0_force_ee_tip")
+        # observables["gripper_tip_force"] = Observable(name = "gripper_tip_force", sensor = gripper_tip_force, sampling_rate = self.control_freq)
+
         @sensor(modality = modality)
         def object_sound(obs_cache):
             sound = np.zeros((6,))
-#             input(len(self.sim.data.qacc_warmstart))
-#             input(len(self.sim.data.qacc_unc))
-#             input(len(self.sim.data.body_xvelr))
-#             input(len(self.sim.data.cacc))
-#             input(self.cube_body_id)
-#             print(self.sim.data.cfrc_ext[self.cube_body_id][0:3]) #include full vector of length 6
-#             sound = self.sim.data.cfrc_ext[self.cube_body_id]
             if self.sim.data.body_xpos[self.cube_body_id][2] < 0.84:
                 sound = self.sim.data.cfrc_ext[self.cube_body_id]
-#             print(np.linalg.norm(sound))
             return sound
         observables["object_sound"] = Observable(name = "object_sound", sensor = object_sound, sampling_rate = self.control_freq)
+
+        #
+        # @sensor(modality=modality)
+        # def gripper_joint_force(obs_cache):
+        #     return np.array([self.sim.data.efc_force[x] / 10 for x in self.robots[0]._ref_gripper_joint_vel_indexes])  # divide by 10 to normalize somewhat
+        #
+        # observables["robot0_gripper_joint_force"] = Observable(
+        #         name=gripper_joint_force,
+        #         sensor=gripper_joint_force,
+        #         sampling_rate=self.control_freq,
+        #     )
+
         return observables
 
     def _reset_internal(self):
@@ -431,18 +425,18 @@ class IndicatorBoxBlock(SingleArmEnv):
 #                 print(obj.joints)
 #                 print("-----")
                 self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
-                
+
                 if obj_pos[1] < -0.1:
                     indicator_pos = (0.25, -0.15, obj_pos[2])
                 elif obj_pos[1] < 0:
                     indicator_pos = (0.25, -0.05, obj_pos[2])
                 elif obj_pos[1] < 0.1:
                     indicator_pos = (0.25, 0.05, obj_pos[2])
-                else: 
+                else:
                     indicator_pos = (0.25, 0.15, obj_pos[2])
-                    
+
                 self.sim.data.set_joint_qpos(self.indicator.joints[0], np.concatenate([np.array(indicator_pos), np.array([1, 0, 0, 0])]))
-            
+
     def visualize(self, vis_settings):
         """
         In addition to super call, visualize gripper site proportional to the distance to the cube.

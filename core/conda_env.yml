@@ -4,8 +4,6 @@ channels:
 dependencies:
   - python=3.7
   - pip
-  - pytorch
-  - cudatoolkit
   - absl-py
   - pyparsing
   - jupyterlab
@@ -22,8 +20,6 @@ dependencies:
     - ipdb
     - tqdm
     - pyaudio
-    - torchvision==0.9.1
-    - torchaudio==0.8.1
     - yapf
     - librosa
     - pyquaternion

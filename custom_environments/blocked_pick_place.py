@@ -170,7 +170,7 @@ class BlockedPickPlace(SingleArmEnv):
             mujoco_robots=[robot.robot_model for robot in self.robots],
             mujoco_objects=self.cube,
         )
-        self.model.exportXML()
+        # self.model.exportXML()
 
     def _setup_references(self):
         """
@@ -232,16 +232,16 @@ class BlockedPickPlace(SingleArmEnv):
         def gripper_force(obs_cache):
             return self.robots[0].get_sensor_measurement("gripper0_force_ee")/20#hardcoded for now
         observables["gripper_force"] = Observable(name = "gripper_force", sensor = gripper_force, sampling_rate = self.control_freq)
+        #
+        # @sensor(modality = modality)
+        # def gripper_torque(obs_cache):
+        #     return self.robots[0].get_sensor_measurement("gripper0_torque_ee")/20#hardcoded for now
+        # observables["gripper_torque"] = Observable(name = "gripper_torque", sensor = gripper_torque, sampling_rate = self.control_freq)
 
-        @sensor(modality = modality)
-        def gripper_torque(obs_cache):
-            return self.robots[0].get_sensor_measurement("gripper0_torque_ee")/20#hardcoded for now
-        observables["gripper_torque"] = Observable(name = "gripper_torque", sensor = gripper_torque, sampling_rate = self.control_freq)
-
-        @sensor(modality = modality)
-        def gripper_tip_force(obs_cache):
-            return self.robots[0].get_sensor_measurement("gripper0_force_ee_tip")
-        observables["gripper_tip_force"] = Observable(name = "gripper_tip_force", sensor = gripper_torque, sampling_rate = self.control_freq)
+        # @sensor(modality = modality)
+        # def gripper_tip_force(obs_cache):
+        #     return self.robots[0].get_sensor_measurement("gripper0_force_ee_tip")
+        # observables["gripper_tip_force"] = Observable(name = "gripper_tip_force", sensor = gripper_torque, sampling_rate = self.control_freq)
 
         @sensor(modality = modality)
         def object_sound(obs_cache):
@@ -250,6 +250,17 @@ class BlockedPickPlace(SingleArmEnv):
                 sound = self.sim.data.cfrc_ext[self.cube_body_id]
             return sound
         observables["object_sound"] = Observable(name = "object_sound", sensor = object_sound, sampling_rate = self.control_freq)
+
+        # @sensor(modality=modality)
+        # def gripper_joint_force(obs_cache):
+        #     return np.array([self.sim.data.efc_force[x] / 10 for x in self.robots[0]._ref_gripper_joint_vel_indexes])  # divide by 10 to normalize somewhat
+        #
+        # observables["robot0_gripper_joint_force"] = Observable(
+        #         name=gripper_joint_force,
+        #         sensor=gripper_joint_force,
+        #         sampling_rate=self.control_freq,
+        #     )
+
         return observables
 
     def _reset_internal(self):

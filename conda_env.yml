@@ -1,0 +1,33 @@
+name: playbyear
+channels:
+  - defaults
+dependencies:
+  - python=3.9.7
+  - pip
+  - absl-py
+  - pyparsing
+  - scikit-image
+  - cudatoolkit
+  - pytorch=1.8
+  - pip:
+    - git+https://git@github.com/facebookresearch/hydra@0.11_branch
+    - git+https://git@github.com/deepmind/dm_control.git
+    - git+https://git@github.com/denisyarats/dmc2gym.git
+    - termcolor
+    - tb-nightly
+    - imageio
+    - imageio-ffmpeg
+    - pandas
+    - ipdb
+    - tqdm
+    - h5py #new
+    - pyaudio
+    - torchvision==0.9.0
+    - torchaudio==0.8.0
+    - robosuite
+    - yapf
+    - librosa
+    - pyquaternion
+    - sklearn
+    - matplotlib
+    - kornia

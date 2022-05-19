@@ -2,7 +2,7 @@ import numpy as np
 from robosuite.models.arenas import Arena
 from robosuite.utils.mjcf_utils import xml_path_completion
 from robosuite.utils.mjcf_utils import array_to_string, string_to_array
-
+import os 
 
 class BlockedTableArena(Arena):
     """
@@ -24,9 +24,12 @@ class BlockedTableArena(Arena):
         table_friction=(1, 0.005, 0.0001),
         table_offset=(0, 0, 0.8),
         has_legs=True,
-        xml="arenas/blocked_table_bins.xml", #change this to where you put the file
+        xml="blocked_table_bins.xml", #change this to where you put the file
     ):
-        super().__init__(xml_path_completion(xml))
+        here = os.path.realpath(__file__) #find the current directory
+        idx = here.find("half_blocked_table.py")
+        here = here[0: idx] #get the outer directory
+        super().__init__(here + xml)
 
         self.table_full_size = np.array(table_full_size)
         self.table_half_size = self.table_full_size / 2

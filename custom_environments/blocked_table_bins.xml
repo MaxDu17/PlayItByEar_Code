@@ -1,22 +1,22 @@
 <mujoco model="table_arena">
   <asset>
     <texture builtin="gradient" height="256" rgb1=".9 .9 1." rgb2=".2 .3 .4" type="skybox" width="256"/>
-    <texture file="../textures/wood-tiles.png" type="2d" name="texplane"/>
+    <texture file="textures/wood-tiles.png" type="2d" name="texplane"/>
     <material name="floorplane" reflectance="0.01" shininess="0.0" specular="0.0" texrepeat="2 2" texture="texplane" texuniform="true"/>
     <!-- ceramic table texture and material-->
-    <texture file="../textures/ceramic.png" type="cube" name="tex-ceramic"/>
+    <texture file="textures/ceramic.png" type="cube" name="tex-ceramic"/>
     <material name="table_ceramic" reflectance="0.0" shininess="0.0" specular="0.2" texrepeat="1 1" texture="tex-ceramic" />
     <!-- steel legs -->
-    <texture file="../textures/steel-brushed.png" type="cube" name="tex-steel-brushed"/>
+    <texture file="textures/steel-brushed.png" type="cube" name="tex-steel-brushed"/>
     <material name="table_legs_metal" reflectance="0.8" shininess="0.8" texrepeat="1 1" texture="tex-steel-brushed" />
     <!-- plaster walls -->
-    <texture file="../textures/cream-plaster.png" type="2d" name="tex-cream-plaster"/>
+    <texture file="textures/cream-plaster.png" type="2d" name="tex-cream-plaster"/>
     <material name="walls_mat" reflectance="0.0" shininess="0.1" specular="0.1" texrepeat="3 3" texture="tex-cream-plaster" texuniform="true" />
     <!-- added table texture and material for domain randomization -->
     <texture  name="textable" builtin="flat" height="512" width="512" rgb1="0.5 0.5 0.5" rgb2="0.5 0.5 0.5"/>
     <material name="table_mat" texture="textable" />
-    <texture file="../textures/light-wood.png" type="2d" name="tex-light-wood"/>
-    <texture file="../textures/dark-wood.png" type="2d" name="tex-dark-wood"/>
+    <texture file="textures/light-wood.png" type="2d" name="tex-light-wood"/>
+    <texture file="textures/dark-wood.png" type="2d" name="tex-dark-wood"/>
     <material name="light-wood" reflectance="0" texrepeat="15 15" texture="tex-light-wood" texuniform="true"/>
     <material name="dark-wood" reflectance="0" texrepeat="5 5" texture="tex-dark-wood" texuniform="true"/>
   </asset>
@@ -34,16 +34,16 @@
     <body name="table" pos="0 0 0.4">
       <geom pos="0 0 0" size="0.4 0.4 0.4" type="box" group="0" name="table_collision" friction="1 0.005 0.0001"/>
       <geom pos="0 0 0" size="0.4 0.4 0.4" type="box" conaffinity="0" contype="0" group="1" name="table_visual" material="table_ceramic"/>
-            
+
       <geom pos="0.1 0.2 0" size="0.02 0.2 0.18" type="box" group="0" name="blocker_wall" friction="1 0.005 0.0001"/>
       <geom pos="0.1 0.2 0" size="0.02 0.2 0.18" type="box" conaffinity="0" contype="0" group="1" name="blocker_visual" material="table_legs_metal"/>
-        
-<!--         
+
+<!--
      <geom pos="0 0.35 0" size="0.4 0.01 0.03" type="box" group="0" name="blocker_wall1" friction="1 0.005 0.0001"/>
       <geom pos="0 0.35 0" size="0.4 0.01 0.03" type="box" conaffinity="0" contype="0" group="1" name="blocker_visual1" material="table_legs_metal"/>
          -->
-        
-        
+
+
       <site pos="0 0 0.4" name="table_top" size="0.001 0.001 0.001" rgba="0 0 0 0"/>
 
       <geom pos="0 0 0" size="0.05 0.1" type="cylinder" conaffinity="0" contype="0" group="1" name="table_leg1_visual" material="table_legs_metal"/>
@@ -65,7 +65,7 @@
         <geom pos="-0.1 0 0.05" size="0.01 0.1 0.05" type="box" conaffinity="0" contype="0" group="1" material="light-wood"/>
         <joint name="bin1_joint0" type="free" /><site group="0" name="SoftCube_default_site" pos="0 0 0" rgba="1 0 0 0" size="0.002 0.002 0.002" type="sphere" />
     </body>   -->
-      
+
           <body name="bin1" pos="0.0 -0.15 0.8">
       <geom friction="1 0.005 0.0001" group="0" pos="0 0 0" rgba="0.5 0.5 0 1" size="0.04 0.04 0.003" type="box" />
       <geom conaffinity="0" contype="0" group="1" material="light-wood" pos="0 0 0" size="0.04 0.04 0.003" type="box" />
@@ -78,8 +78,8 @@
         <geom friction="1 0.005 0.0001" group="0" pos="-0.04 0 0.02" rgba="0.5 0.5 0 1" size="0.003 0.04 0.02" type="box" />
         <geom conaffinity="0" contype="0" group="1" material="light-wood" pos="-0.04 0 0.02" size="0.003 0.04 0.02" type="box" />
         <joint name="bin1_joint0" type="free" /><site group="0" name="bin1_site" pos="0 0 0" rgba="1 0 0 0" size="0.002 0.002 0.002" type="sphere" />
-    </body>  
-    
+    </body>
+
     <light name="light1" diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="1 1 4.0" specular="0.3 0.3 0.3" castshadow="false"/>
     <light name="light2" diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="-3. -3. 4.0" specular="0.3 0.3 0.3" castshadow="false"/>
 

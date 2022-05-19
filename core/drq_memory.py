@@ -64,6 +64,11 @@ class Encoder(nn.Module):
         if detach:
             h = h.detach()
 
+        # a slightly hacky solution to allow for training / test compatibility
+        if lowdim.shape[1] == 1:
+            # [N, 1, D] -> [N, D]
+            lowdim = lowdim[:, 0, ...]
+            # lowdim = torch.squeeze(lowdim)
         combined_states = torch.cat([h, lowdim], dim=-1) #add lowdims here
         out = self.head(combined_states)
         if not self.output_logits:
@@ -74,8 +79,9 @@ class Encoder(nn.Module):
         return out
 
     def copy_conv_weights_from(self, source):
-        for i in range(self.num_layers):
-            utils.tie_weights(src=source.convs[i], trg=self.convs[i])
+        pass
+        # for i in range(self.num_layers):
+        #     utils.tie_weights(src=source.convs[i], trg=self.convs[i])
 
     def log(self, logger, step):
         for k, v in self.outputs.items():
@@ -117,10 +123,7 @@ class Actor(nn.Module):
         assert encoded.shape[0] == batch_size
         assert encoded.shape[1] == sequence_length
         self.outputs['before_encoding'] = encoded
-        input(encoded.shape)
         _, (encoded, c) = self.memory_cells(encoded)
-        input(encoded.shape)
-        input("here!")
         self.outputs['encoded'] = encoded
         encoded = encoded.reshape(batch_size, -1)
         #################################
@@ -487,13 +490,14 @@ class DRQAgent(object):
 
         with torch.no_grad():
             old_loss = loss(agent_action[0 : self.batch_size], action[0 : self.batch_size])
-            new_loss = loss(agent_action[self.batch_size : ], action[self.batch_size : ])
+            new_loss = loss(agent_action[self.batch_size : ], action[self.batch_size : ]) 
             #will print "NAN" for new_loss if not on balanced batches; that's fine because this is only for logging purposes
 
         if step % 10 == 0:
             print("loss: ", actor_loss.item())
-            print("old loss: ", old_loss.item())
-            print("new loss: ", new_loss.item())
+            if not torch.isnan(new_loss): #slightly hacky
+                print("old loss: ", old_loss.item())
+                print("new loss: ", new_loss.item())
             print("step ----" , step, " ----step")
 
         if step % self.log_frequency == 0:

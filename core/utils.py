@@ -156,10 +156,24 @@ class FrameStack_Lowdim(gym.Wrapper):
         self.audio = audio
         assert not(demo) or self.mode == 'sim', "demo reset only works in sim"
 
+    def render_highdim_list(self, h, w, cam_name_list):
+        img_list = list()
+        for cam in cam_name_list:
+            img = self.sim.render(
+                camera_name=cam,
+                width=w,
+                height=h,
+            )
+            img_list.append(img)
+        return np.concatenate(img_list, axis=0)
+
     def reset(self):
         if self.demo:
             print("mode: demo")
-            ob_dict, obs_raw = self.env.demo_reset()
+            # ob_dict, obs_raw = self.env.demo_reset()
+            # obs_raw = self.env.reset()
+            ob_dict = self.env.env.reset() #use the direct render
+            obs_raw = self.env._flatten_obs(ob_dict)
             if self.frameMode == 'cat':
                 lowdim, image = obsAndImage(obs_raw, self.cfg, self.non_stacked_space)
             else:
@@ -187,7 +201,12 @@ class FrameStack_Lowdim(gym.Wrapper):
     def step(self, action):
         if self.demo:
 #             print("mode: demo")
-            ob_dict, obs_raw, reward, done, info  = self.env.demo_step(action)
+#             obs_raw, reward, done, info  = self.env.step(action)
+#             ob_dict, obs_raw, reward, done, info  = self.env.demo_step(action)
+
+            ob_dict, reward, done, info = self.env.env.step(action)
+            obs_raw = self.env._flatten_obs(ob_dict)
+
             if self.frameMode == 'cat':
                 lowdim, image = obsAndImage(obs_raw, self.cfg, self.non_stacked_space)
             else:
@@ -312,6 +331,17 @@ class FrameStack_StackCat(gym.Wrapper):
                 self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer
                 self._ldframes.append(np.concatenate(list(self._auxldframes.copy())))
             return self._get_low(), self._get_obs()
+
+    def render_highdim_list(self, h, w, cam_name_list):
+        img_list = list()
+        for cam in cam_name_list:
+            img = self.sim.render(
+                camera_name=cam,
+                width=w,
+                height=h,
+            )
+            img_list.append(img)
+        return np.concatenate(img_list, axis=0)
 
     def step(self, action):
         if self.demo:

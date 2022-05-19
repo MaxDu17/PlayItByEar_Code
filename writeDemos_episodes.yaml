@@ -1,0 +1,123 @@
+# env
+env: drq-robosuite
+seed: 10
+device: cuda
+
+# ignore these
+action_repeat: 1 #not used for now
+num_train_steps: 5000000 # not used
+num_train_iters: 1 #not used
+num_seed_steps: 1000 #not used
+horizon: 500 #not used
+eval_frequency: 10000
+num_eval_episodes: 2
+log_frequency_step: 10000
+log_save_tb: true
+save_video: true
+lr: 1e-3
+batch_size: 128
+
+# observation
+image_size: 84
+image_pad: 4
+use_lowdim: true
+
+#for save and loading
+demo_root: /iris/u/maxjdu/Repos/PlayItByEar_Code/demos/ # CHANGE THIS
+system: sim
+stack: 1 #stack should be 1 for demo collection
+
+environmentName: BlockedPickPlace #IMPORTANT: this is the environment that is run
+modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel]
+cameraName: agentview_image
+runName:  ${environmentName}_${episodes}
+stacked: true
+
+#Other hyperparameters
+episodeLength: 250 #150 for occluded block, 250 for pick place
+episodes: 50
+recordFrq: 10
+sparseProp: 0.75 #what proportion of rewards will be 0 (the rest will be 1)
+
+#different names currently registered
+#IndicatorBoxBlock
+#BlockedPickPlace
+
+
+#modalities to choose from
+# robot0_joint_pos_cos  :  (7,)
+# robot0_joint_pos_sin  :  (7,)
+# robot0_joint_vel  :  (7,)
+# robot0_eef_pos  :  (3,)
+# robot0_eef_quat  :  (4,)
+# robot0_gripper_qpos  :  (2,)
+# robot0_gripper_qvel  :  (2,)
+# agentview_image  :  (84, 84, 3)
+# cube_pos  :  (3,)
+# cube_quat  :  (4,)
+# gripper_to_cube_pos  :  (3,)
+# gripper_force  :  (3,)
+# gripper_tip_force: (3, ) #for the force at the tip of the gripper
+# gripper_torque  :  (3,)
+# object_sound  :  (2,)
+# robot0_proprio-state  :  (32,) CONCATENATED from cos, sin, vel, pos, quat, qpos, qvel
+# image-state  :  (84, 84, 3) DON'T USE THIS, use agentview_image instead
+# object-state  :  (18,)
+
+
+# agent configuration
+agent:
+  name: drq
+  class: drq.DRQAgent
+  params:
+    obs_shape: ??? # to be specified later
+    action_shape: ??? # to be specified later
+    action_range: ??? # to be specified later
+    lowdim_dim: ??? #to b e specified later
+#    device: ${device}
+#    encoder_cfg: ${encoder}
+#    critic_cfg: ${critic}
+#    actor_cfg: ${actor}
+#    discount: 0.99
+#    init_temperature: 0.1
+#    lr: ${lr}
+#    actor_update_frequency: 2
+#    critic_tau: 0.01
+#    critic_target_update_frequency: 2
+#    batch_size: ${batch_size}
+#    log_frequency: 20
+
+#critic:
+#  class: drq.Critic
+#  params:
+#    encoder_cfg: ${agent.params.encoder_cfg}
+#    action_shape: ${agent.params.action_shape}
+#    hidden_dim: 1024
+#    hidden_depth: 2
+#
+#actor:
+#  class: drq.Actor
+#  params:
+#    encoder_cfg: ${agent.params.encoder_cfg}
+#    action_shape: ${agent.params.action_shape}
+#    hidden_depth: 2
+#    hidden_dim: 1024
+#    log_std_bounds: [-10, 2]
+#
+#encoder:
+#  class: drq.Encoder
+#  params:
+#      obs_shape: ${agent.params.obs_shape}
+#      feature_dim: 50
+#      lowdim_dim: ${agent.params.lowdim_dim}
+#      num_layers: 4
+#      num_filters: 32
+#      output_dim: 35
+#      output_logits: False
+
+
+# hydra configuration
+hydra:
+  name: ${env}
+  run:
+    dir: ${demo_root}/${runName}/
