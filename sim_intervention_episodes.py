@@ -6,7 +6,7 @@ print(platform.node())
 import copy
 import math
 import os
-import psutil
+# import psutil
 import pickle as pkl
 import sys
 import random
@@ -42,8 +42,6 @@ from custom_environments.indicatorboxBlock import IndicatorBoxBlock
 from custom_environments.blocked_pick_place import BlockedPickPlace
 
 
-import franka_env
-
 def make_env(cfg):
     env = make(
             cfg.environmentName,
@@ -65,7 +63,13 @@ def make_env(cfg):
     allmodlist.append(cfg.cameraName)
     env = GymWrapper(env, keys = allmodlist)
 
-    cfg.agent.params.lowdim_dim = cfg.lowdim_stack *  env.get_lowdim_dims(cfg.modalities)
+    ob_dict = env.env.reset()
+    dims = 0
+    for key in ob_dict:
+        if key in cfg.modalities:
+            dims += np.shape(ob_dict[key])[0]
+
+    cfg.agent.params.lowdim_dim = cfg.lowdim_stack *  dims
     env = utils.FrameStack_StackCat(env, cfg, k=cfg.frame_stack,  l_k = cfg.lowdim_stack, stack_depth = cfg.stack, demo = True, audio = False)
     np.random.seed(cfg.seed)
     torch.multiprocessing.set_start_method('spawn') #is this needed?
@@ -196,10 +200,12 @@ class Workspace(object):
             gripper_pos = raw_dict["robot0_gripper_qpos"]
 
             # contact logic
-            if np.linalg.norm(raw_dict["robot0_gripper_joint_force"]) > 0.35:
+            if np.linalg.norm(raw_dict["gripper_force"]) > 1 :
                 print("\t\tcontact")
                 hasContacted = True #marks first contact
                 timeSinceContact = 0 #resets the contact counter
+
+
             # intervention for searching
             if not intervention and (hasContacted or self.step > 50) and claw_pos[2] > 0.92 and reward < 0.99:
                 print("\tINTERVENTION SEARCH TIME")
@@ -262,7 +268,7 @@ class Workspace(object):
                     status = 5
                 if np.linalg.norm(displacement) < 0.02 and status == 3: #raise to approach
                     status = 4
-                if np.linalg.norm(raw_dict["robot0_gripper_joint_force"]) > 0.35 and (status == 1 or status == 0): #remove to raise
+                if np.linalg.norm(raw_dict["gripper_force"]) > 1  and (status == 1 or status == 0): #remove to raise
                     print("CONTACT")
                     status = 3
                     intervention = False #RELINQUISH CONTROL see if thing can grab
@@ -365,7 +371,7 @@ class Workspace(object):
             claw_pos = raw_dict["robot0_eef_pos"]
             gripper_pos = raw_dict["robot0_gripper_qpos"]
 
-            if np.linalg.norm(raw_dict["robot0_gripper_joint_force"]) > 0.35:
+            if np.linalg.norm(raw_dict["gripper_force"]) > 1 :
                 print("\t\tcontact")
                 hasContacted = True #marks first contact
                 timeSinceContact = 0 #resets the contact counter
@@ -440,7 +446,7 @@ class Workspace(object):
                     status = 5
                 if np.linalg.norm(displacement) < 0.02 and status == 3: #raise to approach
                     status = 4
-                if np.linalg.norm(raw_dict["robot0_gripper_joint_force"]) > 0.35 and (status == 1 or status == 0): #remove to raise
+                if np.linalg.norm(raw_dict["gripper_force"]) > 1  and (status == 1 or status == 0): #remove to raise
                     print("CONTACT")
                     status = 3
                     intervention = False #RELINQUISH CONTROL see if thing can grab
@@ -556,10 +562,10 @@ class Workspace(object):
                 del self.new_replay_buffer_iterable
                 gc.collect()
                 self.new_replay_buffer_iterable = iter(self.new_replay_buffer_dataloader)
-                process = psutil.Process(os.getpid())
-                memory_logger.write(str((process.memory_info().rss) / 1e9) + "\n")
-                print("Memory usage in gb: ", (process.memory_info().rss) / 1e9)
-                print("FINISHED UPDATING BUFFER ITERABLE")
+                # process = psutil.Process(os.getpid())
+                # memory_logger.write(str((process.memory_info().rss) / 1e9) + "\n")
+                # print("Memory usage in gb: ", (process.memory_info().rss) / 1e9)
+                # print("FINISHED UPDATING BUFFER ITERABLE")
                 for i in range(cfg.updates_per_episode):  #train model
                     if i % 100 == 0:
                         print("\t", i)

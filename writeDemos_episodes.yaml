@@ -27,7 +27,7 @@ demo_root: /iris/u/maxjdu/Repos/PlayItByEar_Code/demos/ # CHANGE THIS
 system: sim
 stack: 1 #stack should be 1 for demo collection
 
-environmentName: BlockedPickPlace #IMPORTANT: this is the environment that is run
+environmentName: IndicatorBoxBlock #IMPORTANT: this is the environment that is run
 modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel]
 cameraName: agentview_image
 runName:  ${environmentName}_${episodes}

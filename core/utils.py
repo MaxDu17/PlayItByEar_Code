@@ -170,8 +170,6 @@ class FrameStack_Lowdim(gym.Wrapper):
     def reset(self):
         if self.demo:
             print("mode: demo")
-            # ob_dict, obs_raw = self.env.demo_reset()
-            # obs_raw = self.env.reset()
             ob_dict = self.env.env.reset() #use the direct render
             obs_raw = self.env._flatten_obs(ob_dict)
             if self.frameMode == 'cat':
@@ -286,7 +284,8 @@ class FrameStack_StackCat(gym.Wrapper):
     def reset(self):
         if self.demo:
             print("mode: demo")
-            ob_dict, obs_raw = self.env.demo_reset()
+            ob_dict = self.env.env.reset() #use the direct render
+            obs_raw = self.env._flatten_obs(ob_dict)
             lowdim, image = obsAndImage(obs_raw, self.cfg, self.non_stacked_space)
 
             image = np.transpose(image, (2, 0, 1))
@@ -345,7 +344,10 @@ class FrameStack_StackCat(gym.Wrapper):
 
     def step(self, action):
         if self.demo:
-            ob_dict, obs_raw, reward, done, info  = self.env.demo_step(action)
+            # ob_dict, obs_raw, reward, done, info  = self.env.demo_step(action)
+
+            ob_dict, reward, done, info = self.env.env.step(action)
+            obs_raw = self.env._flatten_obs(ob_dict)
             lowdim, image = obsAndImage(obs_raw, self.cfg, self.non_stacked_space)
 
 #             lowdim, image = obsAndImage(obs_raw, self.cfg)

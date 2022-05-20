@@ -490,15 +490,15 @@ class DRQAgent(object):
 
         with torch.no_grad():
             old_loss = loss(agent_action[0 : self.batch_size], action[0 : self.batch_size])
-            new_loss = loss(agent_action[self.batch_size : ], action[self.batch_size : ]) 
+            new_loss = loss(agent_action[self.batch_size : ], action[self.batch_size : ])
             #will print "NAN" for new_loss if not on balanced batches; that's fine because this is only for logging purposes
 
         if step % 10 == 0:
-            print("loss: ", actor_loss.item())
+            # print("loss: ", actor_loss.item())
             if not torch.isnan(new_loss): #slightly hacky
                 print("old loss: ", old_loss.item())
                 print("new loss: ", new_loss.item())
-            print("step ----" , step, " ----step")
+            # print("step ----" , step, " ----step")
 
         if step % self.log_frequency == 0:
             logger.log('train_actor/loss', actor_loss, step)

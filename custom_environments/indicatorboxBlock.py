@@ -371,10 +371,10 @@ class IndicatorBoxBlock(SingleArmEnv):
                     sensor=s,
                     sampling_rate=self.control_freq,
                 )
-        # @sensor(modality = modality)
-        # def gripper_force(obs_cache):
-        #     return self.robots[0].get_sensor_measurement("gripper0_force_ee")/20#hardcoded for now
-        # observables["gripper_force"] = Observable(name = "gripper_force", sensor = gripper_force, sampling_rate = self.control_freq)
+        @sensor(modality = modality)
+        def gripper_force(obs_cache):
+            return self.robots[0].get_sensor_measurement("gripper0_force_ee")/20#hardcoded for now
+        observables["gripper_force"] = Observable(name = "gripper_force", sensor = gripper_force, sampling_rate = self.control_freq)
         #
         # @sensor(modality = modality)
         # def gripper_torque(obs_cache):

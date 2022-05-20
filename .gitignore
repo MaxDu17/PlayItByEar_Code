@@ -3,5 +3,8 @@ events.out.*
 *.log
 *.pkl
 *.out
+__pycache__/
+.ipynb_checkpoints/
+.idea/
 demos/
 Results/
