@@ -43,7 +43,7 @@ num_workers: 4 #CHANGE BACK LATER
 warmup: 2 #how many episodes before first train
 
 #environment info
-environmentName: BlockedPickPlace #IMPORTANT: this is the environment that is run
+environmentName: IndicatorBoxBlock #IMPORTANT: this is the environment that is run
 modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_qvel]
 cameraName: agentview_image
 
