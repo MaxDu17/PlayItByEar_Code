@@ -61,7 +61,7 @@ cameraName: agentview_image
 
 #logging
 # runName: ${load_folder}
-runName: ${environmentName}_${number_demos}_${seed}_ablateaudio
+runName: ${environmentName}_${number_demos}_${seed}
 #####CHANGES END HERE ##########
 
 
