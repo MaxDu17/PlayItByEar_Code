@@ -297,6 +297,7 @@ class FrameStack_StackCat(gym.Wrapper):
                 self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer
                 self._ldframes.append(np.concatenate(list(self._auxldframes.copy())))
 
+
             return ob_dict, self._get_low(), self._get_obs()
 
         elif self.audio:
@@ -329,6 +330,10 @@ class FrameStack_StackCat(gym.Wrapper):
             for _ in range(self.stack_depth):
                 self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer
                 self._ldframes.append(np.concatenate(list(self._auxldframes.copy())))
+            # print(self.stack_depth)
+            # print(len(self._ldframes))
+            # print(self._ldframes[0].shape)
+            # input("here")
             return self._get_low(), self._get_obs()
 
     def render_highdim_list(self, h, w, cam_name_list):
@@ -408,11 +413,10 @@ class FrameStack_StackCat(gym.Wrapper):
         assert len(self._ldframes) == self.stack_depth
         lowdim_frames = np.expand_dims(np.stack(list(self._ldframes), axis=0), axis = 1)
         #### ablating audio ###
-#         print("ABLATE AUDIO")
-#         lowdim_frames = np.zeros_like(lowdim_frames)
-#         for j in range(10):
-#             for i in range(10):
-#                 lowdim_frames[j, :, 13 * i : 13 * i + 6] = 0
+        # print("ABLATE AUDIO")
+        # for j in range(10):
+        #     for i in range(10):
+        #         lowdim_frames[j, :, 13 * i : 13 * i + 6] = 0
         #### ABLATE AUDIO #####
 
         ####### ablating history #######

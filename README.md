@@ -31,11 +31,9 @@ Set the `orig_seed` to the seed of the imitation-trained model, and set the `che
 # Structure of this repository
 The `core/` directory contains all the code for the model we used, as well as some critical utility functions and replay buffer implementations. 
 
-The `custom_environments/` directory contains the code and `.xml` models for the Robosuite environments we used. 
+The `custom_environments/` directory contains the code and `.xml` models for the Robosuite environments we used.
 
-The `simulation_experiments/` directory contains the code we used to run imitaiton learning and corrections on the Robosuite simulator. This also includes a residual training baseline. 
-
-The `utilities/` directory contains the code that we used to collect demonstrations. 
+All the code that can be run directly is in the main folder. 
 
 # Acknowledgements
 This codebase is adapted from *Image Augmentation Is All You Need: Regularizing Deep Reinforcement Learning from Pixels* (https://github.com/denisyarats/drq)

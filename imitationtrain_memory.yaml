@@ -44,7 +44,7 @@ system: sim #sim for the mujoco stuff, and "real" for franka
 seed: ??
 number_demos: 50
 demo_file: ${environmentName}_${number_demos}/demos.pkl
-stack: 1
+stack: 10 # history
 
 #misc training parameters
 batch_size: 16 #used to be 32
@@ -61,7 +61,7 @@ cameraName: agentview_image
 
 #logging
 # runName: ${load_folder}
-runName: ${environmentName}_${number_demos}_${seed}
+runName: ${environmentName}_${number_demos}_${seed}_ablateaudio
 #####CHANGES END HERE ##########
 
 

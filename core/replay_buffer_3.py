@@ -142,14 +142,11 @@ class SingleEpisode():
         not_dones_no_max = padded_not_dones_no_max[startIdx:startIdx + length]
 
         ### ABLATE AUDIO ###
-        #         print("ABLATE AUDIO")
-        #         lowdim = np.zeros_like(lowdim)
-        #         next_lowdim = np.zeros_like(lowdim)
-
-        #         for j in range(10):
-        #             for i in range(10):
-        #                 lowdim[j, :, 13 * i : 13 * i + 6] = 0
-        #### ABLATE VISION #####
+        # print("ABLATE AUDIO")
+        # for j in range(10):
+        #     for i in range(10):
+        #         lowdim[j, :, 13 * i : 13 * i + 6] = 0
+        #### ABLATE AUDIO #####
 
         ### ABLATE VISION ###
         #         obses = np.zeros_like(obses)
