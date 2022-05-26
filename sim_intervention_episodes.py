@@ -1,6 +1,5 @@
 # scripted intervention implementation
 
-import librosa
 import platform
 print(platform.node())
 import copy
@@ -84,6 +83,7 @@ def worker_init_fn(worker_id):
 
 class Workspace(object):
     def __init__(self, cfg):
+        # file housekeeping
         self.work_dir = cfg.log_dir + "/corrections_improved"
         try:
             os.mkdir(self.work_dir)
@@ -97,25 +97,33 @@ class Workspace(object):
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
         self.env = make_env(cfg)
-
         self.env.seed(cfg.seed)
+
+        # setting shapes and other limits
         raw_dict, lowdim, obs= self.env.reset() #let's mold our model to what the environment outputs
         cfg.agent.params.obs_shape = np.shape(obs)[1:]
-
         cfg.agent.params.action_shape = self.env.action_space.shape
-
         cfg.agent.params.action_range = [
             float(self.env.action_space.low.min()),
             float(self.env.action_space.high.max())
         ]
 
-        self.agent = hydra.utils.instantiate(cfg.agent) #weird syntax; it makes an agent (see drq.py)
+        # logging
+        self.logger = Logger(cfg=cfg,
+                             log_dir=self.work_dir,
+                             save_tb=cfg.log_save_tb,
+                             log_frequency=cfg.log_frequency_step,
+                             agent=cfg.agent.name,
+                             action_repeat=cfg.action_repeat)
+        self.video_recorder = VideoRecorder(
+            self.work_dir if cfg.save_video else None, fps=5)
+        self.step = 0
 
-
-        print("weights are being loaded")
+        # replay buffers and BC policies
+        self.agent = hydra.utils.instantiate(cfg.agent)
+        print("Loading weights")
         self.agent.load(cfg.load_dir, prefix = cfg.actor_root)
-        print("done!")
-        print("loading!!")
+        print("Loading replay buffer")
         self.old_replay_buffer_obj = pkl.load(open(cfg.demo_root + cfg.demo_file, "rb")) #load previous collection attempt (allows you to collect in multiple sessions)
         self.old_replay_buffer_obj.set_sample_settings(trainprop = 1, train = True, length = cfg.stack, correctionsOnly = False)
         self.old_replay_buffer_dataloader = torch.utils.data.DataLoader(self.old_replay_buffer_obj,
@@ -123,13 +131,10 @@ class Workspace(object):
                              num_workers=cfg.num_workers,
                              worker_init_fn=worker_init_fn)
         self.old_replay_buffer = iter(self.old_replay_buffer_dataloader)
-
-
         self.new_replay_buffer = ReplayBufferEpisode(self.old_replay_buffer_obj.lowdim_shape, self.old_replay_buffer_obj.obs_shape,
                                   self.old_replay_buffer_obj.action_shape, cfg.num_corrections,
                                   cfg.episodeLength, cfg.image_pad,
                                   cfg.device)
-
         self.new_replay_buffer.set_sample_settings(trainprop = 1, train = True, length = cfg.stack, correctionsOnly = True)
         self.new_replay_buffer_dataloader = torch.utils.data.DataLoader(self.new_replay_buffer,
                                      batch_size=self.cfg.batch_size,
@@ -138,36 +143,16 @@ class Workspace(object):
         self.new_replay_buffer_iterable = iter(self.new_replay_buffer_dataloader)
 
 
-        self.logger = Logger(cfg = cfg,
-             log_dir = self.work_dir,
-             save_tb=cfg.log_save_tb,
-             log_frequency=cfg.log_frequency_step,
-             agent=cfg.agent.name,
-             action_repeat=cfg.action_repeat)
-
-
-        self.video_recorder = VideoRecorder(
-            self.work_dir if cfg.save_video else None, fps=5)
-        self.step = 0
-
-
 
     def single_demo_indicator_boxblock(self, iteration, cfg):
         #essentially, we have an oracle policy and we switch to the oracle if certain checkpoints are not met
         #control is given back to the agent after the oracle gets past the tricky task
 
         episode, episode_reward, episode_step, done = 0, 0, 1, True
-        CAP = 0.15
-        done = False
         episode_step = 0
         episode += 1
-
         success = 0
         buffer_list = list()
-        gripperStatus = 0
-        liftStatus = False
-        buffer_list = list()
-
         self.video_recorder.new_recorder_init(f'{iteration}.gif', enabled= True)
         raw_dict, lowdim, obs = self.env.reset()
 
@@ -175,51 +160,51 @@ class Workspace(object):
         status = -1
         gripperMagnitude = 1
         gripperStatus = -gripperMagnitude
-        status_dict = {0 : "sidereach", 1 : "sidestep", 2 : "asdfasdad", 3: "moveup", 4 : "positioning",
-                      5 : "blockreach", 6 : "grabbing", 7 : "lifting", 8 : "HALT"}
+        status_dict = {0 : "sidereach", 1 : "sidestep", 3: "moveup", 4 : "positioning",
+                      5 : "blockreach", 6 : "grabbing", 7 : "lifting", 8 : "HALT"} #for printing purposes
         reward = 0 #init reward
         hasContacted = False
-        intervention = False
+        intervention = False #switch indicator
         intervention_prop = 0
         intervention_list = list()
         timeSinceContact = 0
         prev_action = [0, 0, 0]
 
-        while self.step < cfg.episodeLength: #avoid magic numbers; I'll make this code more elegant later
+        # main training loop
+        while self.step < cfg.episodeLength:
             if hasContacted:
-                timeSinceContact += 1 #essentially once we touch once, we start a timer
+                timeSinceContact += 1
             if intervention: #keeps track of how much of this episode was controlled by intervention
                 intervention_prop += 1
 
-            with utils.eval_mode(self.agent):
-                action = self.agent.act(lowdim, obs / 255, sample=False, squash = True) #get the agent's action first
-                delta = np.linalg.norm(action[0:3] - prev_action)
-            #for scripted calculations
+            # oracle states for scripted policy
             cube_pos = raw_dict["cube_pos"]
             claw_pos = raw_dict["robot0_eef_pos"]
             gripper_pos = raw_dict["robot0_gripper_qpos"]
 
-            # contact logic
+            # detect contact
             if np.linalg.norm(raw_dict["gripper_force"]) > 1 :
-                print("\t\tcontact")
+                # print("\t\tcontact") #uncomment for verbose output
                 hasContacted = True #marks first contact
                 timeSinceContact = 0 #resets the contact counter
 
+            with utils.eval_mode(self.agent):
+                action = self.agent.act(lowdim, obs / 255, sample=False, squash = True) # BC agent action
+                delta = np.linalg.norm(action[0:3] - prev_action)
 
-            # intervention for searching
+            # if we haven't touched the cube and it's after a certain time step, intervene
             if not intervention and (hasContacted or self.step > 50) and claw_pos[2] > 0.92 and reward < 0.99:
-                print("\tINTERVENTION SEARCH TIME")
+                # print("\tINTERVENTION SEARCH TIME") #uncomment for verbose output
                 status = 0 # starts the grabbing sequence
                 intervention = True
-            #next, an intervention for grasping
+            #if we are close to the cube but are struggling to lift it, intervene
             elif not intervention and np.linalg.norm(gripper_pos) > 0.05 and np.linalg.norm(claw_pos - cube_pos) < 0.05 and delta < 0.05 and self.step > 200:
-                print("\tINTERVENTION GRAB TIME")
+                # print("\tINTERVENTION GRAB TIME") #uncomment for verbose output
                 status = 3 #starts the grabbing sequence
                 intervention = True
 
-            #if we are in intervention mode, this is how we generate the actions
+            #this is the scripted policy, with entrance points depending on the status
             if intervention:
-                 #what to do at each state
                 if status == 0: #reach for table
                     destination = cube_pos.copy()
                     destination[1] -= 0.12 # some magic numbers that are tuned to this specific environment
@@ -250,17 +235,17 @@ class Workspace(object):
                     raise Exception("this should not have happened")
 
                 #displacement is the vector that we want to travel in
-                displacement = destination - claw_pos
+                displacement = destination - claw_pos #this decides when to give back control
 
                 #switchboard
                 if claw_pos[2] > 0.95 and status == 7:
                     status = 8
                 if np.linalg.norm(gripper_pos) < 0.045 and status == 6: #used to be 0.04
-                    intervention = False #RELINQUISH CONTROL see if the thing can lift
+                    intervention = False #relinquish control and see if the BC plolicy can lift
                     status = 7
-                    print("RELINQUISH CONTROL (to lift)")
+                    # print("RELINQUISH CONTROL (to lift)") # uncomment for verbose output
                 if np.linalg.norm(claw_pos - cube_pos) > 0.1 and status == 7: #close to lift
-                    print("regrasping!")
+                    # print("regrasping!") #uncomment for verbose output
                     status = 5
                 if np.linalg.norm(displacement) < 0.02 and status == 5: #plunge to close #used to be 0.01
                     status = 6
@@ -269,17 +254,18 @@ class Workspace(object):
                 if np.linalg.norm(displacement) < 0.02 and status == 3: #raise to approach
                     status = 4
                 if np.linalg.norm(raw_dict["gripper_force"]) > 1  and (status == 1 or status == 0): #remove to raise
-                    print("CONTACT")
+                    # print("CONTACT") #uncomment for verbose output
                     status = 3
                     intervention = False #RELINQUISH CONTROL see if thing can grab
-                    print("RELINQUISH CONTROL (to grab)")
+                    # print("RELINQUISH CONTROL (to grab)") #uncomment for verbose output
                     hasContacted = True
                 if np.linalg.norm(displacement) < 0.02 and status == 0: #reach next to the cube
                     status = 1
 
+                # scaling and clipping
                 displacement = np.multiply(displacement, 5)
                 displacement = [component if -1 <= component <= 1 else -1 if component < -1 else 1 for component in displacement] #capping this vector
-                print(status_dict[status])
+                # print(status_dict[status]) #uncomment for verbose output
 
                 action = np.append(displacement, gripperStatus)
                 assert max(map(abs, action)) <= 1 #making sure we are within our action space
@@ -291,18 +277,17 @@ class Workspace(object):
             if reward > 0.99:
                 success = 1 #any success means we can accept this run
 
-            raw_dict, next_lowdim, next_obs, reward, done, info = self.env.step(action)
+            raw_dict, next_lowdim, next_obs, reward, done, info = self.env.step(action) #use chosen action on the environment
 
             done = float(done)
             done_no_max = 0 if episode_step + 1 == self.env._max_episode_steps else done
             episode_reward += reward
 
-            #adds to a list, which will be added to the replay buffer as an episode
             buffer_list.append((lowdim[-1], obs[-1], action, 0,
                                 (1.0 if self.step > cfg.sparseProp * cfg.episodeLength else 0.0), next_lowdim[-1], next_obs[-1], done, done_no_max))
-
             video_frame = self.env.render_highdim_list(200, 200, ["sideview", "agentview"])
 
+            # visualizing intervention through a colored box
             if intervention:
                 video_frame[0:30, 0:30] = 0
                 video_frame[0:30, 0:30, 0] = 255
@@ -316,7 +301,7 @@ class Workspace(object):
             lowdim = next_lowdim
             episode_step += 1
             self.step += 1
-            prev_action = action[0:3]
+            prev_action = action[0:3] #crop out gripper because we will take xyz displacement
 
         self.logger.log('train_actor/intervention_prop', intervention_prop / cfg.episodeLength, self.new_replay_buffer.idx)
         print("intervention prop: ", intervention_prop / cfg.episodeLength)
@@ -324,19 +309,16 @@ class Workspace(object):
         self.video_recorder.clean_up()
         if success and intervention_prop > 0:
             self.new_replay_buffer.add(buffer_list, priority = intervention_list)
-            print("****** ADDED ****** and we are at ", self.new_replay_buffer.idx)
+            print("ADDED trajectory, currently at index ", self.new_replay_buffer.idx)
         return success and intervention_prop > 0 #discard runs where there is no corrections
 
     def single_demo_pick_place(self, iteration, cfg):
         episode, episode_reward, episode_step, done = 0, 0, 1, True
         episode_step = 0
         episode += 1
-
         success = 0
         buffer_list = list()
-
-        self.video_recorder.new_recorder_init(f'{iteration}.gif', enabled= True)
-        raw_dict, lowdim, obs = self.env.reset()
+        reward = 0 #init reward. Used for determining when the task is successful
 
         #some housekeeping variables
         status = -1
@@ -344,16 +326,19 @@ class Workspace(object):
         gripperStatus = -gripperMagnitude
         status_dict = {0 : "sidereach", 1 : "sidestep", 2 : "asdfasdad", 3: "moveup", 4 : "positioning",
                        5 : "blockreach", 6 : "grabbing", 7 : "lifting", 8: "position", 9: "drop"}
-        reward = 0 #init reward
 
         hasContacted = False
-        hasMoved = False #these are related, but moved uses the "sound"
         intervention = False
         intervention_prop = 0
         intervention_list = list()
         timeSinceContact = 0
-        bin_pos = raw_dict['bin_pos']
+        bin_pos = raw_dict['bin_pos'] #location of the bin
         prev_action = [0, 0, 0]
+
+        self.video_recorder.new_recorder_init(f'{iteration}.gif', enabled= True)
+        raw_dict, lowdim, obs = self.env.reset()
+
+
 
         while self.step < cfg.episodeLength: #avoid magic numbers; I'll make this code more elegant later
             with utils.eval_mode(self.agent):
@@ -361,28 +346,28 @@ class Workspace(object):
                 delta = np.linalg.norm(action[0:3] - prev_action)
 
             if hasContacted:
-                timeSinceContact += 1 #essentially once we touch once, we start a timer
+                timeSinceContact += 1 # start a timer since the last contact
 
             if intervention: #keeps track of how much of this episode was controlled by intervention
                 intervention_prop += 1
 
-            #for scripted calculations
+            #oracle states for scripted policy
             cube_pos = raw_dict["cube_pos"]
             claw_pos = raw_dict["robot0_eef_pos"]
             gripper_pos = raw_dict["robot0_gripper_qpos"]
 
             if np.linalg.norm(raw_dict["gripper_force"]) > 1 :
-                print("\t\tcontact")
+                # print("\t\tcontact") #uncomment for verbose output
                 hasContacted = True #marks first contact
                 timeSinceContact = 0 #resets the contact counter
             # searching intervention
             if not intervention and (hasContacted or self.step > 50) and claw_pos[2] > 0.92 and np.linalg.norm(claw_pos - cube_pos) > 0.05 and claw_pos[1] > -0.1:
-                print("\tINTERVENTION SEARCH TIME")
+                # print("\tINTERVENTION SEARCH TIME") #uncomment for verbose output
                 status = 0 # starts the grabbing sequence
                 intervention = True
             #next, an intervention for grasping
             elif not intervention and np.linalg.norm(gripper_pos) > 0.05 and np.linalg.norm(claw_pos - cube_pos) < 0.05 and delta < 0.05 and self.step > 200:
-                print("\tINTERVENTION GRAB TIME")
+                # print("\tINTERVENTION GRAB TIME") #uncomment for verbose output
                 status = 3 #starts the grabbing sequence
                 intervention = True
 
@@ -447,17 +432,17 @@ class Workspace(object):
                 if np.linalg.norm(displacement) < 0.02 and status == 3: #raise to approach
                     status = 4
                 if np.linalg.norm(raw_dict["gripper_force"]) > 1  and (status == 1 or status == 0): #remove to raise
-                    print("CONTACT")
+                    # print("CONTACT") #uncomment for verbose output
                     status = 3
                     intervention = False #RELINQUISH CONTROL see if thing can grab
-                    print("RELINQUISH CONTROL (to grab)")
+                    # print("RELINQUISH CONTROL (to grab)") #uncomment for verbose output
                     hasContacted = True
                 if np.linalg.norm(displacement) < 0.02 and status == 0: #reach next to the cube
                     status = 1
 
                 displacement = np.multiply(displacement, 5)
                 displacement = [component if -1 <= component <= 1 else -1 if component < -1 else 1 for component in displacement] #capping this vector
-                print(status_dict[status])
+                # print(status_dict[status]) #uncomment for verbose output
 
                 action = np.append(displacement, gripperStatus)
                 assert max(map(abs, action)) <= 1 #making sure we are within our action space
@@ -503,7 +488,7 @@ class Workspace(object):
 
         if success and intervention_prop > 0:
             self.new_replay_buffer.add(buffer_list, priority = intervention_list)
-            print("****** ADDED ****** and we are at ", self.new_replay_buffer.idx)
+            print("ADDED trajectory, currently at index ", self.new_replay_buffer.idx)
         return success and intervention_prop > 0 #discard runs where there is no corrections
 
 
@@ -516,12 +501,11 @@ class Workspace(object):
             episode_reward = 0
             episode_step = 0
             this_success = False
-            beg_ = time.time()
             while not done:
                 with utils.eval_mode(self.agent):
                     action = self.agent.act(lowdim, obs/255, sample=False, squash = self.cfg.use_squashed)
                 _, lowdim, obs, reward, done, info = self.env.step(action)
-                sys.stdout.write("..")
+                sys.stdout.write(".")
                 sys.stdout.flush()
 
                 self.video_recorder.simple_record(self.env.render_highdim_list(200, 200, ["agentview", "sideview"]))
@@ -558,25 +542,22 @@ class Workspace(object):
 
         while successes <= numMoreSuccesses:
             if self.new_replay_buffer.idx > self.cfg.warmup and isSuccessful: #prevents double-training on a failure
-                print("UPDATING BUFFER ITERABLE")
+                # print("UPDATING BUFFER ITERABLE") #uncomment for verbose output
                 del self.new_replay_buffer_iterable
                 gc.collect()
                 self.new_replay_buffer_iterable = iter(self.new_replay_buffer_dataloader)
-                # process = psutil.Process(os.getpid())
-                # memory_logger.write(str((process.memory_info().rss) / 1e9) + "\n")
-                # print("Memory usage in gb: ", (process.memory_info().rss) / 1e9)
-                # print("FINISHED UPDATING BUFFER ITERABLE")
+                print("Entering training loop")
                 for i in range(cfg.updates_per_episode):  #train model
-                    if i % 100 == 0:
-                        print("\t", i)
+                    # if i % 100 == 0:
+                        # print("Training, step \t", i) #uncomment for verbose  output
                     self.agent.update_bc_balanced(self.old_replay_buffer, self.new_replay_buffer_iterable, self.logger,
                                                   cfg.updates_per_episode * (self.new_replay_buffer.idx - self.cfg.warmup - 1) + i, squash = self.cfg.use_squashed)
-                print("trained!")
+                print("Finished training")
             if self.new_replay_buffer.idx % self.cfg.rollouts_per_eval == 0:
-                print("SAVING SAVING")
+                # print("SAVING SAVING") #uncomment for verbose output
                 self.agent.save(self.new_replay_buffer.idx, self.work_dir)
 
-            isSuccessful = task(successes + numCurrSuccesses, cfg)
+            isSuccessful = task(successes + numCurrSuccesses, cfg) #runs the corrections
             counter += 1
             self.step = 0
             successes += isSuccessful

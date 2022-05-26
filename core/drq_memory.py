@@ -79,6 +79,7 @@ class Encoder(nn.Module):
         return out
 
     def copy_conv_weights_from(self, source):
+        # we don't use this anymore, as there is no critic
         pass
         # for i in range(self.num_layers):
         #     utils.tie_weights(src=source.convs[i], trg=self.convs[i])
@@ -129,7 +130,7 @@ class Actor(nn.Module):
         #################################
 
         mu, log_std = self.trunk(encoded).chunk(2, dim=-1)
-#             constrain log_std inside [log_std_min, log_std_max]
+#       constrain log_std inside [log_std_min, log_std_max]
         log_std = torch.tanh(log_std)
         log_std_min, log_std_max = self.log_std_bounds
         log_std = log_std_min + 0.5 * (log_std_max - log_std_min) * (log_std + 1)

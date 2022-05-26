@@ -123,14 +123,6 @@ class SingleEpisode():
         obses = padded_obses[startIdx:startIdx + length]
         next_obses = padded_next_obses[startIdx:startIdx + length]
 
-        #### ABLATE HISTORY
-                # print("ABLATE HISTORY")
-                # lowdim[:, :, :-13] = 0
-                # next_lowdim[:, :, :-13] = 0
-                # obses[:, : -3, :, :] = 0
-                # next_obses[:, : -3, :, :] = 0
-        #### ABLATE HISTORY
-
         padded_actions = np.pad(self.actions, ((length - 1, 0), (0, 0)), "edge")
         actions = padded_actions[startIdx:startIdx + length]
 
@@ -140,19 +132,6 @@ class SingleEpisode():
 
         padded_not_dones_no_max = np.pad(self.not_dones_no_max, ((length - 1, 0), (0, 0)), "edge")
         not_dones_no_max = padded_not_dones_no_max[startIdx:startIdx + length]
-
-        ### ABLATE AUDIO ###
-        # print("ABLATE AUDIO")
-        # for j in range(10):
-        #     for i in range(10):
-        #         lowdim[j, :, 13 * i : 13 * i + 6] = 0
-        #### ABLATE AUDIO #####
-
-        ### ABLATE VISION ###
-        #         obses = np.zeros_like(obses)
-        #         next_obses = np.zeros_like(obses)
-        #         print("ABLATE VISION")
-        ### ABLATE VISION ####
 
         return lowdim, obses, actions, rewards, next_lowdim, next_obses, not_dones_no_max
 

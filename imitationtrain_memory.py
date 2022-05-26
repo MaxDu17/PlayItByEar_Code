@@ -162,7 +162,7 @@ class Workspace(object):
                     action = self.agent.act(lowdim, obs, sample=False, squash = self.cfg.use_squashed)
                 lowdim, obs, reward, done, info = self.env.step(action)
                 obs = obs / 255.
-                sys.stdout.write("..")
+                sys.stdout.write(".")
                 sys.stdout.flush()
                 if episode % 10 == 0 or episodes is not None: #record every 10 episodes
                     self.video_recorder.simple_record(self.env.render_highdim_list(200, 200, ["agentview", "sideview"]))

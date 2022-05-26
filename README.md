@@ -10,7 +10,7 @@ The demo collection program is `writeDemos_episodes.py` with a `.yaml` configura
 
 The `environmentName` parameter sets the environment. Pick between `BlockedPickPlace` (occluded pick-place task) and `IndicatorBoxBlock` (occluded lift task).
 
-Set the `demo_root` parameter to demo directory. Other parameters to change include `episodeLength` and `episodes`. After running, the code will save the demos to a `.pkl` file that will be loaded by training code.g
+Set the `demo_root` parameter to demo directory. Other parameters to change include `episodeLength` and `episodes`. After running, the code will save the demos to a `.pkl` file that will be loaded by training code.
 
 # Simulation Training
 The imitation learning code is `imitationtrain_memory.py` with a `.yaml` configuration under the same name. 
@@ -31,7 +31,7 @@ Set the `orig_seed` to the seed of the imitation-trained model, and set the `che
 # Structure of this repository
 The `core/` directory contains all the code for the model we used, as well as some critical utility functions and replay buffer implementations. 
 
-The `custom_environments/` directory contains the code and `.xml` models for the Robosuite environments we used.
+The `custom_environments/` directory contains the code and `.xml` models for the Robosuite environments we used. 
 
 All the code that can be run directly is in the main folder. 
 

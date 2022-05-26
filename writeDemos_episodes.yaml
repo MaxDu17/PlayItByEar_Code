@@ -1,10 +1,9 @@
-# env
 env: drq-robosuite
 seed: 10
 device: cuda
 
-# ignore these
-action_repeat: 1 #not used for now
+# these contain some antiquated parameters that aren't used. Look for "CHANGES HERE" for the relevant adjustments
+action_repeat: 1 #not used
 num_train_steps: 5000000 # not used
 num_train_iters: 1 #not used
 num_seed_steps: 1000 #not used
@@ -43,7 +42,6 @@ sparseProp: 0.75 #what proportion of rewards will be 0 (the rest will be 1)
 #IndicatorBoxBlock
 #BlockedPickPlace
 
-
 #modalities to choose from
 # robot0_joint_pos_cos  :  (7,)
 # robot0_joint_pos_sin  :  (7,)
@@ -74,46 +72,6 @@ agent:
     action_shape: ??? # to be specified later
     action_range: ??? # to be specified later
     lowdim_dim: ??? #to b e specified later
-#    device: ${device}
-#    encoder_cfg: ${encoder}
-#    critic_cfg: ${critic}
-#    actor_cfg: ${actor}
-#    discount: 0.99
-#    init_temperature: 0.1
-#    lr: ${lr}
-#    actor_update_frequency: 2
-#    critic_tau: 0.01
-#    critic_target_update_frequency: 2
-#    batch_size: ${batch_size}
-#    log_frequency: 20
-
-#critic:
-#  class: drq.Critic
-#  params:
-#    encoder_cfg: ${agent.params.encoder_cfg}
-#    action_shape: ${agent.params.action_shape}
-#    hidden_dim: 1024
-#    hidden_depth: 2
-#
-#actor:
-#  class: drq.Actor
-#  params:
-#    encoder_cfg: ${agent.params.encoder_cfg}
-#    action_shape: ${agent.params.action_shape}
-#    hidden_depth: 2
-#    hidden_dim: 1024
-#    log_std_bounds: [-10, 2]
-#
-#encoder:
-#  class: drq.Encoder
-#  params:
-#      obs_shape: ${agent.params.obs_shape}
-#      feature_dim: 50
-#      lowdim_dim: ${agent.params.lowdim_dim}
-#      num_layers: 4
-#      num_filters: 32
-#      output_dim: 35
-#      output_logits: False
 
 
 # hydra configuration

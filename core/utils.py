@@ -198,10 +198,6 @@ class FrameStack_Lowdim(gym.Wrapper):
 
     def step(self, action):
         if self.demo:
-#             print("mode: demo")
-#             obs_raw, reward, done, info  = self.env.step(action)
-#             ob_dict, obs_raw, reward, done, info  = self.env.demo_step(action)
-
             ob_dict, reward, done, info = self.env.env.step(action)
             obs_raw = self.env._flatten_obs(ob_dict)
 
@@ -209,7 +205,6 @@ class FrameStack_Lowdim(gym.Wrapper):
                 lowdim, image = obsAndImage(obs_raw, self.cfg, self.non_stacked_space)
             else:
                 lowdim, image = obsAndImage(obs_raw, self.cfg)
-#             lowdim, image = obsAndImage(obs_raw, self.cfg)
             image = np.transpose(image, (2, 0, 1))
             self._frames.append(image.copy())
             self._ldframes.append(lowdim.copy())
@@ -242,8 +237,6 @@ class FrameStack_Lowdim(gym.Wrapper):
         assert len(self._audframes) == self._k
         assert self.frameMode == 'stack', "in cat mode, audio is singular!"
         aud_frames = np.stack(list(self._audframes), axis=0)
-#         print("ABLATE AUDIO")
-#         aud_frames = np.zeros_like(aud_frames)
         return aud_frames
 
 #this is a special class that allows history AND stacking
@@ -330,10 +323,6 @@ class FrameStack_StackCat(gym.Wrapper):
             for _ in range(self.stack_depth):
                 self._frames.append(np.concatenate(list(self._auxframes.copy()))) #using these buffers to fill up the main stack buffer
                 self._ldframes.append(np.concatenate(list(self._auxldframes.copy())))
-            # print(self.stack_depth)
-            # print(len(self._ldframes))
-            # print(self._ldframes[0].shape)
-            # input("here")
             return self._get_low(), self._get_obs()
 
     def render_highdim_list(self, h, w, cam_name_list):
@@ -365,7 +354,6 @@ class FrameStack_StackCat(gym.Wrapper):
 
         elif self.audio:
             assert self.mode == 'real', "audio doesn't exist in sim!"
-#             print("mode: audio and stack")
             obs_raw, reward, done, info = self.env.step(action)
             lowdim, image, audio = obs_raw
 
@@ -378,7 +366,6 @@ class FrameStack_StackCat(gym.Wrapper):
             self._audframes.append(audio.copy())
             return self._get_low(), self._get_obs(), self._get_audio(), reward, done, info
         else:
-#             print("vanilla step")
             obs_raw, reward, done, info = self.env.step(action)
             if self.mode == "sim":
                 lowdim, image = obsAndImage(obs_raw, self.cfg, self.non_stacked_space)
@@ -397,39 +384,16 @@ class FrameStack_StackCat(gym.Wrapper):
     def _get_obs(self):
         assert len(self._frames) == self.stack_depth
         frames = np.stack(list(self._frames), axis=0)
-
-        ####### ablating history #######
-#         print("ABLATE HISTORY")
-#         frames[:, : -3, :, :] = 0
-
-
-        ####### ablating video #######
-#         print("ABLATE VIDEO")
-#         frames = np.zeros_like(frames)
-
         return frames
 
     def _get_low(self):
         assert len(self._ldframes) == self.stack_depth
         lowdim_frames = np.expand_dims(np.stack(list(self._ldframes), axis=0), axis = 1)
-        #### ablating audio ###
-        # print("ABLATE AUDIO")
-        # for j in range(10):
-        #     for i in range(10):
-        #         lowdim_frames[j, :, 13 * i : 13 * i + 6] = 0
-        #### ABLATE AUDIO #####
-
-        ####### ablating history #######
-#         print("ABLATE HISTORY")
-#         lowdim_frames[:, :, :-7] = 0
-
         return lowdim_frames
 
     def _get_audio(self):
         assert len(self._audframes) == self.stack_depth
         aud_frames = np.stack(list(self._audframes), axis=0)
-#         print("ABLATE AUDIO")
-#         aud_frames = np.zeros_like(aud_frames)
         return aud_frames
 
 class TanhTransform(pyd.transforms.Transform):

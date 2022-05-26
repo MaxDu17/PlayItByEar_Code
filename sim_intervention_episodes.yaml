@@ -1,4 +1,4 @@
-# env
+# these contain some antiquated parameters that aren't used. Look for "CHANGES HERE" for the relevant adjustments
 env: drq-robosuite
 action_repeat: 1 #not used for now
 # train
@@ -18,16 +18,18 @@ horizon: 500
 lr: 1e-3
 batch_size: 8 #half because we do balanced batches
 
-#things that we can't change without breaking something
+
+
+####### CHANGES HERE ########
+#fundamental properties (avoid changing, as it can break things)
 frame_stack: 3
 lowdim_stack: 10
-system: sim #sim for the mujoco stuff, and "real" for franka
+system: sim
 use_squashed: True
 sparseProp: 0.75
 
-####### CHANGES HERE ########
 #core parameters to change
-stack: 10
+stack: 10 #length of history
 num_corrections: 100 #number of corrections
 episodeLength: 400 #400 for pick-place, 250 for grabbing
 
@@ -38,9 +40,9 @@ orig_seed: ${seed}
 demo_file_working: demos.pkl
 priority: true #see what happens
 
-updates_per_episode: 1000 #used to be 2500
-num_workers: 4 #CHANGE BACK LATER
-warmup: 2 #how many episodes before first train
+updates_per_episode: 1000
+num_workers: 4 #for dataloader
+warmup: 5 #how many episodes before first train
 
 #environment info
 environmentName: IndicatorBoxBlock #IMPORTANT: this is the environment that is run
@@ -48,8 +50,8 @@ modalities: [object_sound, robot0_eef_pos, robot0_gripper_qpos, robot0_gripper_q
 cameraName: agentview_image
 
 #logging
-actor_root: /iris/u/maxjdu/Repos/PlayItByEar_Code/Results/
-demo_root: /iris/u/maxjdu/Repos/PlayItByEar_Code/demos/
+actor_root: /iris/u/maxjdu/Repos/PlayItByEar_Code/Results/ # CHANGE this to your own
+demo_root: /iris/u/maxjdu/Repos/PlayItByEar_Code/demos/ # CHANGE this to your own
 load_folder: ${environmentName}_${number_demos}_${orig_seed}
 load_dir: ${load_folder}/${checkpoint}_
 demo_file: ${environmentName}_${number_demos}/demos.pkl
@@ -108,7 +110,7 @@ agent:
     batch_size: ${batch_size}
     log_frequency: 5
 
-critic:
+critic: #NOT USED
   class: core.drq_memory.Critic
   params:
     encoder_cfg: ${agent.params.encoder_cfg}
